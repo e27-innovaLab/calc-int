@@ -3,7 +3,10 @@
  *
  * Convención de importes: se guardan como `string` (ej. "1250.50") y NO como `number`,
  * para no perder precisión. El motor de cálculo los convierte con Decimal.js.
- * El formateo visual ($ 1.250,50) se hace solo en la interfaz.
+ * El redondeo a 2 decimales y el formato ($ 1.250,50) son solo visuales, al mostrar.
+ *
+ * Convención de período: el motor trabaja SIEMPRE en base mensual. Los importes cargados
+ * con otra frecuencia se normalizan con `aMensual()` (motor/periodo.ts) antes de calcular.
  */
 
 /** Importe o cantidad decimal en formato string, parseable por Decimal.js. */
@@ -18,21 +21,24 @@ export type Id = string;
 
 export type TipoOferta = "producto" | "servicio";
 
-/** Monedas soportadas en el MVP. Ajustar según lo acordado en Semana 0. */
-export type Moneda = "ARS" | "USD";
+/** El MVP trabaja solo en pesos argentinos. */
+export type Moneda = "ARS";
 
-export type Periodo = "semanal" | "mensual" | "anual";
+/**
+ * Frecuencia con la que el usuario carga un importe en la interfaz.
+ * El motor la normaliza a mensual: semanal × 4, anual ÷ 12.
+ */
+export type Frecuencia = "semanal" | "mensual" | "anual";
 
 export interface Configuracion {
   tipo: TipoOferta;
   /** Nombre del producto o servicio. Ej: "Torta de chocolate". */
   nombre: string;
   moneda: Moneda;
-  periodo: Periodo;
   /** Unidad en la que se vende. Ej: "unidad", "kg", "hora", "sesión". */
   unidadVenta: string;
-  /** Unidades/servicios que se estima vender en el período. Debe ser > 0. */
-  volumenEstimado: DecimalString;
+  /** Unidades/servicios que se estima vender por mes. Debe ser > 0. */
+  volumenMensual: DecimalString;
 }
 
 // ─────────────────────────────────────────────
@@ -48,14 +54,22 @@ interface ConceptoBase {
   nota?: string;
 }
 
-/** Se mantiene igual dentro del período, sin importar cuánto se venda. */
-export interface CostoFijo extends ConceptoBase {
-  categoria: "fijo";
-  /** Monto total del concepto en el período configurado. */
-  montoPeriodo: DecimalString;
+/** Concepto que se paga por período. El motor lo normaliza a mensual. */
+interface ConceptoPorPeriodo extends ConceptoBase {
+  monto: DecimalString;
+  /** Frecuencia con la que se cargó `monto`. */
+  frecuencia: Frecuencia;
 }
 
-/** Se asocia directamente a cada unidad vendida. */
+/** Se mantiene igual dentro del mes, sin importar cuánto se venda. Ej: alquiler. */
+export interface CostoFijo extends ConceptoPorPeriodo {
+  categoria: "fijo";
+}
+
+/**
+ * Insumo directamente atribuible a cada unidad vendida. Ej: harina, envase.
+ * Es el único costo con base por unidad.
+ */
 export interface CostoVariable extends ConceptoBase {
   categoria: "variable";
   /** Costo por cada unidad de venta. */
@@ -63,14 +77,13 @@ export interface CostoVariable extends ConceptoBase {
 }
 
 /**
- * Otros costos que suelen quedar afuera del cálculo intuitivo.
- * Pueden cargarse por período o por unidad — a confirmar con el equipo
- * cómo se clasifican para no contabilizarlos dos veces.
+ * Otros costos que suelen quedar afuera del cálculo intuitivo. Ej: luz del taller, contador.
+ * En el MVP se tratan como fijos del mes: así no se duplican con los variables
+ * y el usuario no tiene que prorratearlos por unidad. Se separan de `CostoFijo`
+ * solo para mostrarlos en su propio bloque de la interfaz.
  */
-export interface CostoIndirecto extends ConceptoBase {
+export interface CostoIndirecto extends ConceptoPorPeriodo {
   categoria: "indirecto";
-  base: "periodo" | "unidad";
-  monto: DecimalString;
 }
 
 export type ConceptoCosto = CostoFijo | CostoVariable | CostoIndirecto;
@@ -83,8 +96,8 @@ export type CategoriaCosto = ConceptoCosto["categoria"];
 export interface TrabajoPropio {
   /** Si el usuario decide incluir el valor de su tiempo en el costo. */
   incluir: boolean;
-  /** Horas trabajadas en el período. */
-  horasPeriodo: DecimalString;
+  /** Horas trabajadas por mes. */
+  horasMensuales: DecimalString;
   /** Cuánto vale una hora de trabajo. */
   valorHora: DecimalString;
 }
@@ -115,16 +128,17 @@ export interface Calculo {
 
 // ─────────────────────────────────────────────
 // 5. Resultados del motor (Semana 2 — se dejan definidos para acordar el contrato)
+// Todos los importes son mensuales y sin redondear.
 // ─────────────────────────────────────────────
 
 export interface ResultadoCostos {
-  totalCostosFijos: DecimalString;
+  totalCostosFijosMensual: DecimalString;
+  totalIndirectosMensual: DecimalString;
+  totalTrabajoPropioMensual: DecimalString;
   costoVariableUnitario: DecimalString;
-  totalIndirectosPeriodo: DecimalString;
-  totalTrabajoPropio: DecimalString;
-  /** Costo total del período para el volumen estimado. */
-  costoTotalPeriodo: DecimalString;
-  /** Costo total / volumen estimado. */
+  /** Costo total del mes para el volumen mensual estimado. */
+  costoTotalMensual: DecimalString;
+  /** Costo total mensual / volumen mensual. */
   costoUnitario: DecimalString;
 }
 
@@ -136,7 +150,7 @@ export interface ResultadoCostos {
 export type Severidad = "error" | "advertencia";
 
 export interface ErrorValidacion {
-  /** Ruta del campo con problema. Ej: "configuracion.volumenEstimado", "costosFijos.2.montoPeriodo". */
+  /** Ruta del campo con problema. Ej: "configuracion.volumenMensual", "costosFijos.2.monto". */
   campo: string;
   mensaje: string;
   severidad: Severidad;
@@ -150,13 +164,12 @@ export const CONFIGURACION_INICIAL: Configuracion = {
   tipo: "producto",
   nombre: "",
   moneda: "ARS",
-  periodo: "mensual",
   unidadVenta: "unidad",
-  volumenEstimado: "",
+  volumenMensual: "",
 };
 
 export const TRABAJO_PROPIO_INICIAL: TrabajoPropio = {
   incluir: false,
-  horasPeriodo: "",
+  horasMensuales: "",
   valorHora: "",
 };

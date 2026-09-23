@@ -37,5 +37,10 @@ Regla principal: **las fórmulas viven en `src/domain/motor/`, separadas de la i
 
 ## Convenciones
 
-- Los importes se guardan como `string` (`"1250.50"`) y se operan con Decimal.js. El formato visual ($ 1.250,50) se aplica solo al mostrar.
+- Los importes se guardan como `string` (`"1250.50"`) y se operan con Decimal.js. El redondeo a 2 decimales y el formato ($ 1.250,50) son solo visuales, al mostrar.
+- Moneda: solo **ARS** en el MVP.
+- Período: el motor es **estrictamente mensual**. Si la interfaz permite cargar importes semanales o anuales, se normalizan con `aMensual()` (semanal × 4, anual ÷ 12) antes de calcular.
+- Clasificación de costos para no contabilizar dos veces:
+  - **Variables** (base unidad): solo insumos directamente atribuibles a cada unidad.
+  - **Fijos** e **indirectos** (base mensual): los indirectos se tratan como fijos del mes, sin prorrateo por unidad.
 - Cambios por rama + Pull Request a `main`.
