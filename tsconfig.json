@@ -1,0 +1,27 @@
+{
+  "compilerOptions": {
+    /* Layout de archivos */
+    "rootDir": "./src",
+    "outDir": "./dist",
+
+    /* Entorno y módulos */
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "target": "esnext",
+    "types": ["node"],
+    "skipLibCheck": true,
+
+    /* Mapas e interoperabilidad */
+    "sourceMap": true,
+    "declaration": true,
+    "declarationMap": true,
+    "esModuleInterop": true,
+
+    /* Verificación de tipos estricta */
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "isolatedModules": true,
+    "moduleDetection": "force"
+  },
+  "include": ["src/**/*"]
+}
