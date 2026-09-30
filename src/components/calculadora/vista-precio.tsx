@@ -1,0 +1,324 @@
+"use client";
+
+import { useId } from "react";
+
+import { Aviso } from "@/components/ui/aviso";
+import { Ayuda } from "@/components/ui/ayuda";
+import { BotonLink } from "@/components/ui/boton";
+import { CampoMonto } from "@/components/ui/campo-monto";
+import { Tarjeta } from "@/components/ui/tarjeta";
+import { MARGEN_MAXIMO_PCT, nivelDeMargen, precioPorMargen, type NivelMargen } from "@/domain/motor/precio";
+import { useAnalisisPrecio } from "@/hooks/use-analisis-precio";
+import { useHidratado } from "@/hooks/use-hidratado";
+import { formatearCantidad, formatearMonto, formatearPorcentaje } from "@/lib/formato";
+import type { ModoPrecio } from "@/domain/types";
+import { useCalculoStore } from "@/store/calculo-store";
+
+const MARGEN_RECOMENDADO = 40;
+
+const MENSAJES_MARGEN: Record<NivelMargen, { texto: string; bueno: boolean }> = {
+  "muy-bajo": { texto: "Margen muy bajo: cualquier imprevisto te puede hacer perder plata.", bueno: false },
+  bajo: { texto: "Margen ajustado: alcanza, pero con poco colchón para imprevistos.", bueno: false },
+  bueno: { texto: "Buen margen para sostener el negocio y tener colchón para imprevistos.", bueno: true },
+  alto: { texto: "Margen alto: revisá que tus clientes acepten ese precio.", bueno: true },
+};
+
+const PESTAÑAS: { modo: ModoPrecio; etiqueta: string }[] = [
+  { modo: "margen", etiqueta: "Precio por margen" },
+  { modo: "manual", etiqueta: "Ingresé mi precio" },
+];
+
+function Esqueleto() {
+  return (
+    <div aria-busy="true" aria-label="Cargando tu cálculo" className="flex animate-pulse flex-col gap-6">
+      <div className="h-8 w-2/3 rounded-lg bg-gray-200" />
+      <div className="h-64 rounded-2xl bg-gray-100" />
+    </div>
+  );
+}
+
+/** Paso 4 — «Precio y punto de equilibrio» (Vista 4 del diseño). */
+export function VistaPrecio() {
+  const hidratado = useHidratado();
+  return hidratado ? <Precio /> : <Esqueleto />;
+}
+
+function Precio() {
+  const { calculo, resumen, analisis } = useAnalisisPrecio();
+  const actualizarPrecio = useCalculoStore((s) => s.actualizarPrecio);
+  const cambiarPaso = useCalculoStore((s) => s.cambiarPaso);
+  const idPanel = useId();
+
+  const { modo, margenPct, precioManual } = calculo.precio;
+  const hayCostos = resumen.costoUnitario !== null && (resumen.tieneCostosFijos || resumen.tieneCostosVariables);
+
+  if (!hayCostos) {
+    const faltaVolumen = resumen.volumenMensual === null;
+    return (
+      <div className="flex flex-col items-start gap-6">
+        <h1 className="text-3xl font-bold tracking-tight text-gray-900">Primero necesitamos tus costos</h1>
+        <Aviso tono="advertencia">
+          {faltaVolumen
+            ? "Contanos cuántas unidades producís por mes para poder calcular tu precio."
+            : "Cargá al menos un costo fijo o variable para poder sugerirte un precio."}
+        </Aviso>
+        <BotonLink href={faltaVolumen ? "/calculadora/producto" : "/calculadora/costos"}>
+          {faltaVolumen ? "Ir a «Tu producto»" : "Ir a los costos"}
+        </BotonLink>
+      </div>
+    );
+  }
+
+  const margen = Number(margenPct) || 0;
+  const nivel = nivelDeMargen(margenPct);
+  const precioSugerido = precioPorMargen(calculo, margenPct);
+
+  return (
+    <div className="flex flex-col gap-8">
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight text-gray-900">¿A qué precio lo vas a vender?</h1>
+        <p className="mt-2 text-lg text-gray-700">
+          Podés dejar que te sugiramos un precio según tu margen esperado, o ingresar el tuyo directamente.
+        </p>
+      </div>
+
+      <div role="tablist" aria-label="Cómo definir el precio" className="grid grid-cols-2 gap-1 rounded-xl bg-gray-100 p-1">
+        {PESTAÑAS.map((p) => {
+          const activa = modo === p.modo;
+          return (
+            <button
+              key={p.modo}
+              type="button"
+              role="tab"
+              id={`${idPanel}-${p.modo}`}
+              aria-selected={activa}
+              aria-controls={`${idPanel}-panel`}
+              onClick={() => actualizarPrecio({ modo: p.modo })}
+              className={`rounded-lg px-4 py-3 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-primary-600 ${
+                activa ? "bg-white text-primary-600 shadow-sm" : "text-gray-500 hover:text-gray-900"
+              }`}
+            >
+              {p.etiqueta}
+            </button>
+          );
+        })}
+      </div>
+
+      <div id={`${idPanel}-panel`} role="tabpanel" aria-labelledby={`${idPanel}-${modo}`}>
+        {modo === "margen" ? (
+          <Tarjeta className="flex flex-col gap-4">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <label htmlFor="margen" className="text-base font-medium text-gray-900">
+                  Margen esperado
+                </label>
+                <Ayuda
+                  sobre="margen esperado"
+                  texto="Es la parte del precio de venta que te queda como ganancia sobre el costo de cada unidad."
+                  ejemplo="con un margen del 40 %, de cada $100 que cobrás, $40 son ganancia y $60 cubren el costo."
+                />
+              </div>
+              <output htmlFor="margen" className="text-2xl font-extrabold text-primary-600">
+                {margen}%
+              </output>
+            </div>
+
+            <div>
+              <input
+                id="margen"
+                type="range"
+                min={0}
+                max={MARGEN_MAXIMO_PCT}
+                step={1}
+                value={margen}
+                aria-valuetext={`${margen} por ciento`}
+                onChange={(e) => actualizarPrecio({ margenPct: e.target.value })}
+                className="h-2 w-full cursor-pointer accent-primary-600"
+              />
+              <div className="relative mt-1 h-5 text-xs text-gray-500">
+                <span className="absolute left-0">0%</span>
+                <span
+                  className="absolute -translate-x-1/2 font-medium text-primary-600"
+                  style={{ left: `${(MARGEN_RECOMENDADO / MARGEN_MAXIMO_PCT) * 100}%` }}
+                >
+                  {MARGEN_RECOMENDADO}% recomendado
+                </span>
+                <span className="absolute right-0">{MARGEN_MAXIMO_PCT}%</span>
+              </div>
+            </div>
+
+            {nivel ? (
+              <p className={`flex items-start gap-1.5 text-sm font-medium ${MENSAJES_MARGEN[nivel].bueno ? "text-success-700" : "text-warning-700"}`}>
+                <span aria-hidden="true">{MENSAJES_MARGEN[nivel].bueno ? "✓" : "⚠"}</span>
+                <span>{MENSAJES_MARGEN[nivel].texto}</span>
+              </p>
+            ) : null}
+
+            <div className="rounded-xl bg-primary-50 p-4">
+              <div className="flex items-center gap-2 text-sm text-gray-700">
+                Precio sugerido por unidad
+                <Ayuda
+                  sobre="precio sugerido"
+                  texto="Es el costo unitario dividido por (1 − margen): el precio que necesitás para ganar ese margen."
+                />
+              </div>
+              <p className="mt-1 text-2xl font-extrabold text-primary-600" aria-live="polite">
+                {formatearMonto(precioSugerido)}
+              </p>
+            </div>
+          </Tarjeta>
+        ) : (
+          <Tarjeta className="flex flex-col gap-4">
+            <label htmlFor="precio-manual" className="text-base font-medium text-gray-900">
+              Tu precio de venta al público
+            </label>
+            <CampoMonto
+              id="precio-manual"
+              placeholder="Ej: 7000"
+              value={precioManual}
+              onChange={(valor) => actualizarPrecio({ precioManual: valor })}
+            />
+            <div className="rounded-xl bg-primary-50 p-4" aria-live="polite">
+              <p className="text-sm text-gray-700">Margen resultante</p>
+              <p className={`mt-1 text-2xl font-extrabold ${analisis && Number(analisis.margenResultantePct) < 0 ? "text-danger-700" : "text-primary-600"}`}>
+                {analisis ? formatearPorcentaje(analisis.margenResultantePct) : "—"}
+              </p>
+            </div>
+          </Tarjeta>
+        )}
+      </div>
+
+      {analisis ? (
+        <Resultados analisis={analisis} volumen={resumen.volumenMensual} />
+      ) : (
+        <Aviso tono="info">Ingresá tu precio de venta para ver tu contribución, tu ganancia y tu punto de equilibrio.</Aviso>
+      )}
+
+      <div className="flex items-center justify-between gap-3">
+        <BotonLink href="/calculadora/resumen" variante="secundario">
+          ← Atrás
+        </BotonLink>
+        <BotonLink href="/calculadora/simulador" onClick={() => cambiarPaso("simulador")}>
+          Ver simulador →
+        </BotonLink>
+      </div>
+    </div>
+  );
+}
+
+function Resultados({
+  analisis,
+  volumen,
+}: {
+  analisis: NonNullable<ReturnType<typeof useAnalisisPrecio>["analisis"]>;
+  volumen: string | null;
+}) {
+  const pierdePorUnidad = Number(analisis.contribucion) <= 0;
+  const ganancia = Number(analisis.gananciaNetaMensual);
+
+  return (
+    <>
+      <section
+        aria-labelledby="contribucion"
+        className={`rounded-2xl border p-5 ${pierdePorUnidad ? "border-danger-100 bg-danger-50" : "border-success-100 bg-success-50"}`}
+      >
+        <div className="flex items-center gap-2">
+          <h2 id="contribucion" className="text-base font-medium text-gray-900">
+            Margen de Contribución
+          </h2>
+          <Ayuda
+            sobre="margen de contribución"
+            texto="Lo que te queda de cada venta después de pagar los insumos, antes de cubrir tus gastos fijos."
+            ejemplo="si vendés a $500 y los materiales costaron $85, tu contribución es $415 por unidad."
+          />
+        </div>
+        <p className={`mt-1 flex items-baseline gap-2 ${pierdePorUnidad ? "text-danger-700" : "text-success-700"}`}>
+          <span className="text-3xl font-extrabold tracking-tight">{formatearMonto(analisis.contribucion)}</span>
+          <span className="text-sm font-semibold">por unidad</span>
+        </p>
+        {pierdePorUnidad ? (
+          <p className="mt-1 text-sm text-danger-700">
+            Con este precio no cubrís ni los insumos de cada unidad: cada venta suma pérdida.
+          </p>
+        ) : (
+          <>
+            <p className="mt-1 text-sm text-success-700">{formatearPorcentaje(analisis.contribucionPct)} del precio de venta</p>
+            <p className="text-sm text-success-700">
+              Cada venta contribuye con {formatearMonto(analisis.contribucion)} para cubrir los costos fijos.
+            </p>
+          </>
+        )}
+      </section>
+
+      <Tarjeta aria-labelledby="proyeccion">
+        <h2 id="proyeccion" className="text-sm font-medium text-gray-500">
+          Proyección mensual
+        </h2>
+        <dl className="mt-3 flex flex-col gap-2 text-sm">
+          <div className="flex items-baseline justify-between gap-3">
+            <dt className="text-gray-700">Ingresos totales</dt>
+            <dd className="font-medium text-gray-900">{formatearMonto(analisis.ingresosTotalesMensual)}</dd>
+          </div>
+          <div className="flex items-baseline justify-between gap-3">
+            <dt className="text-gray-700">Costos totales</dt>
+            <dd className="font-medium text-gray-900">{formatearMonto(analisis.costosTotalesMensual)}</dd>
+          </div>
+          <div className="flex items-baseline justify-between gap-3">
+            <dt className="text-gray-700">Ganancia neta</dt>
+            <dd className={`font-semibold ${ganancia < 0 ? "text-danger-700" : "text-success-700"}`}>
+              {formatearMonto(analisis.gananciaNetaMensual)}
+            </dd>
+          </div>
+        </dl>
+      </Tarjeta>
+
+      <section aria-labelledby="equilibrio" className="rounded-2xl bg-gray-900 p-6 text-white shadow-sm">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2 text-sm text-gray-200">
+              <h2 id="equilibrio" className="font-normal">
+                Punto de equilibrio
+              </h2>
+              <Ayuda
+                sobre="punto de equilibrio"
+                texto="Es la cantidad mínima que tenés que vender en el mes para cubrir todos tus costos. Por debajo perdés plata, por encima ganás."
+              />
+            </div>
+            {analisis.puntoEquilibrioUnidades ? (
+              <>
+                <p className="mt-1 text-3xl font-extrabold">{formatearCantidad(analisis.puntoEquilibrioUnidades)} unidades</p>
+                <p className="mt-1 text-sm text-gray-200">Facturación mínima: {formatearMonto(analisis.facturacionMinima)}</p>
+              </>
+            ) : (
+              <p className="mt-1 text-xl font-bold">No se alcanza con este precio</p>
+            )}
+          </div>
+          <EstadoEquilibrio estado={analisis.estado} />
+        </div>
+        <p className={`mt-4 text-sm font-medium ${analisis.estado === "supera" ? "text-success-100" : "text-warning-500"}`}>
+          {analisis.estado === "supera"
+            ? "¡Estás vendiendo bien por encima de tu piso! Cada unidad extra ya es ganancia pura."
+            : analisis.estado === "bajo"
+              ? "Necesitás aumentar el volumen o el precio para cubrir tus costos fijos."
+              : "Subí el precio por encima de tu costo variable por unidad para poder cubrir los costos fijos."}
+        </p>
+        {volumen ? <p className="sr-only">Producís {formatearCantidad(volumen)} unidades por mes.</p> : null}
+      </section>
+
+      <Aviso tono="consejo">
+        El punto de equilibrio no es tu meta — es tu piso. Apuntá a vender al menos 30% más para tener una ganancia real.
+      </Aviso>
+    </>
+  );
+}
+
+function EstadoEquilibrio({ estado }: { estado: "supera" | "bajo" | "inalcanzable" }) {
+  if (estado === "supera") {
+    return <span className="rounded-full bg-success-600 px-3 py-1 text-sm font-semibold text-white">✓ Superás el equilibrio</span>;
+  }
+  return (
+    <span className="rounded-full bg-warning-500 px-3 py-1 text-sm font-semibold text-gray-900">
+      ⚠ {estado === "bajo" ? "Bajo el equilibrio" : "Sin equilibrio"}
+    </span>
+  );
+}
