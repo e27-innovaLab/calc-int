@@ -37,7 +37,14 @@ export interface Configuracion {
   moneda: Moneda;
   /** Unidad en la que se vende. Ej: "unidad", "kg", "hora", "sesión". */
   unidadVenta: string;
-  /** Unidades/servicios que se estima vender por mes. Debe ser > 0. */
+  /** Unidades que se producen en cada lote (tanda). Ej: 20 tortas por tanda. Debe ser > 0. */
+  unidadesPorLote: DecimalString;
+  /** Lotes (tandas) que se producen por mes. Entero > 0. */
+  lotes: DecimalString;
+  /**
+   * Unidades/servicios que se estima vender por mes = `unidadesPorLote × lotes`.
+   * Se mantiene sincronizado al editar (ver `volumenDesdeLotes` en motor/costos.ts). Debe ser > 0.
+   */
   volumenMensual: DecimalString;
 }
 
@@ -96,7 +103,12 @@ export type CategoriaCosto = ConceptoCosto["categoria"];
 export interface TrabajoPropio {
   /** Si el usuario decide incluir el valor de su tiempo en el costo. */
   incluir: boolean;
-  /** Horas trabajadas por mes. */
+  /** Horas que le dedica a cada lote. */
+  horasPorLote: DecimalString;
+  /**
+   * Horas trabajadas por mes = `horasPorLote × lotes`.
+   * Se mantiene sincronizado al editar (ver `horasMensualesDesdeLotes` en motor/costos.ts).
+   */
   horasMensuales: DecimalString;
   /** Cuánto vale una hora de trabajo. */
   valorHora: DecimalString;
@@ -106,12 +118,34 @@ export interface TrabajoPropio {
 // 4. Borrador del cálculo (estado global del recorrido)
 // ─────────────────────────────────────────────
 
+/**
+ * Pasos del recorrido, tal como los muestra el diseño (Figma «PreciJusto»):
+ * Tu producto → Costos (pestañas Fijos y Variables) → Resumen → Precio → Simulador.
+ * Trabajo propio e indirectos viven dentro del paso «costos».
+ */
 export type PasoRecorrido =
   | "configuracion"
-  | "costos-fijos"
-  | "costos-variables"
-  | "trabajo-indirectos"
-  | "resumen";
+  | "costos"
+  | "resumen"
+  | "precio"
+  | "simulador";
+
+/** Cómo define el usuario su precio de venta (paso 4). */
+export type ModoPrecio = "margen" | "manual";
+
+export interface Precio {
+  modo: ModoPrecio;
+  /** Margen esperado en porcentaje (0–99), convención «margen sobre ventas». Ej.: "40". */
+  margenPct: DecimalString;
+  /** Precio que ingresa el usuario cuando elige «Ingresé mi precio». */
+  precioManual: DecimalString;
+}
+
+export const PRECIO_INICIAL: Precio = {
+  modo: "margen",
+  margenPct: "40",
+  precioManual: "",
+};
 
 export interface Calculo {
   id: Id;
@@ -120,6 +154,7 @@ export interface Calculo {
   costosVariables: CostoVariable[];
   costosIndirectos: CostoIndirecto[];
   trabajoPropio: TrabajoPropio;
+  precio: Precio;
   /** Paso en el que quedó el usuario (para retomar). */
   pasoActual: PasoRecorrido;
   creadoEn: string; // ISO 8601
@@ -165,11 +200,14 @@ export const CONFIGURACION_INICIAL: Configuracion = {
   nombre: "",
   moneda: "ARS",
   unidadVenta: "unidad",
+  unidadesPorLote: "",
+  lotes: "1",
   volumenMensual: "",
 };
 
 export const TRABAJO_PROPIO_INICIAL: TrabajoPropio = {
   incluir: false,
+  horasPorLote: "",
   horasMensuales: "",
   valorHora: "",
 };
