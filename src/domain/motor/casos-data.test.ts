@@ -6,6 +6,7 @@ import { CONFIGURACION_INICIAL, type Calculo } from "@/domain/types";
 import { calcularResumenCostos } from "./costos";
 import { simularEscenario } from "./escenarios";
 import { analizarPrecio, precioPorMargen } from "./precio";
+import { costoTotalPorLote } from "./resumen";
 
 /**
  * Casos de la planilla «Validación de fórmulas» de Data (hojas Cálculos, Resultados, Escenarios y Pruebas).
@@ -124,5 +125,28 @@ describe("hoja «Escenarios» de Data (volumen ±20 %, el precio no cambia)", ()
     for (const v of ["-20", "0", "20"]) {
       expect(simularEscenario(remeras(), precio, "produccion", v)!.puntoEquilibrio).toBe("53");
     }
+  });
+});
+
+describe("«Regla del 1» de Data (reventa): 1 unidad por lote y en «Lotes por mes» el volumen total", () => {
+  // Revendedor: 200 ventas al mes, 0,25 hs de atención por venta a $2.000/h, compra a $3.000 c/u, fijos $20.000.
+  const reventa: Entrada = {
+    configuracion: { ...CONFIGURACION_INICIAL, unidadesPorLote: "1", lotes: "200", volumenMensual: "200" },
+    costosFijos: [{ id: "a", nombre: "Local", categoria: "fijo", monto: "20000", frecuencia: "mensual" }],
+    costosIndirectos: [],
+    trabajoPropio: { incluir: true, horasPorLote: "0.25", horasMensuales: "50", valorHora: "2000" },
+    costosVariables: [{ id: "b", nombre: "Compra del producto", categoria: "variable", montoUnitario: "3000" }],
+  };
+
+  it("el volumen es 200, el tiempo propio 0,25 × $2.000 × 200 = $100.000 y el costo unitario $3.600", () => {
+    const r = calcularResumenCostos(reventa);
+    expect(r.volumenMensual).toBe("200");
+    expect(r.totalTrabajoPropioMensual).toBe("100000");
+    expect(r.costoFijoTotalMensual).toBe("120000");
+    expect(r.costoUnitario).toBe("3600");
+  });
+
+  it("el costo total por lote es el de una sola unidad", () => {
+    expect(costoTotalPorLote("3600", "1")).toBe("3600");
   });
 });
