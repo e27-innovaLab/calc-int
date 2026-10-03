@@ -1,5 +1,5 @@
 import express from 'express';
-import { calculateProductCosts } from './controllers/calculator.controller.js';
+import { calculateHandler } from './controllers/calculator.controller.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -8,7 +8,7 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 
 // Rutas
-app.post('/api/v1/calculator/calculate', calculateProductCosts);
+app.post('/api/v1/calculator/calculate', calculateHandler);
 
 app.listen(PORT, () => {
   console.log(`Servidor de Express listo en http://localhost:${PORT}`);
