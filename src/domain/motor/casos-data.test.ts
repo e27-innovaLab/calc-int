@@ -59,8 +59,8 @@ describe("hoja «Cálculos» de Data", () => {
     expect(a.puntoEquilibrioUnidades).toBe("53");
   });
 
-  it("ventas en el equilibrio: la hoja Cálculos usa las unidades SIN redondear ($564.705,88)", () => {
-    expect(dec(a.facturacionMinima)).toBe("564705.88");
+  it("ventas en el equilibrio: 53 unidades (redondeadas hacia arriba) × precio = $565.333,33 (confirmado por Data el 3/10)", () => {
+    expect(dec(a.facturacionMinima)).toBe("565333.33");
   });
 });
 

@@ -50,9 +50,9 @@ describe("precio por margen — torta del diseño", () => {
     expect(redondear(a.gananciaNetaMensual)).toBe("337600.00");
   });
 
-  it("equilibrio: 72 unidades, facturación mínima $502.270, supera el equilibrio", () => {
+  it("equilibrio: 72 unidades, facturación mínima $506.400 (72 × precio), supera el equilibrio", () => {
     expect(a.puntoEquilibrioUnidades).toBe("72");
-    expect(redondear(a.facturacionMinima, 0)).toBe("502270");
+    expect(redondear(a.facturacionMinima, 0)).toBe("506400");
     expect(a.estado).toBe("supera");
   });
 
@@ -78,9 +78,9 @@ describe("precio manual — $200 sobre la torta del diseño", () => {
     expect(a.gananciaNetaMensual).toBe("-482400");
   });
 
-  it("equilibrio: 4.315 unidades, facturación mínima $862.957, bajo el equilibrio", () => {
+  it("equilibrio: 4.315 unidades, facturación mínima $863.000 (4.315 × $200), bajo el equilibrio", () => {
     expect(a.puntoEquilibrioUnidades).toBe("4315");
-    expect(redondear(a.facturacionMinima, 0)).toBe("862957");
+    expect(redondear(a.facturacionMinima, 0)).toBe("863000");
     expect(a.estado).toBe("bajo");
   });
 });

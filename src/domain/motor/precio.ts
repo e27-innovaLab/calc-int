@@ -14,6 +14,7 @@ import { precioSugerido } from "./resumen";
  *   Margen resultante    = (precio − costo unitario) ÷ precio
  *   Contribución         = precio − CVU
  *   Punto de equilibrio  = costo fijo total ÷ contribución        (unidades, SIEMPRE hacia arriba)
+ *   Facturación mínima   = punto de equilibrio (ya redondeado) × precio
  */
 
 type EntradaPrecio = Pick<
@@ -60,7 +61,7 @@ export interface AnalisisPrecio {
   gananciaNetaMensual: DecimalString;
   /** Unidades para cubrir los costos fijos, redondeadas hacia arriba. Null si es inalcanzable. */
   puntoEquilibrioUnidades: DecimalString | null;
-  /** Facturación mínima = unidades de equilibrio SIN redondear × precio (así lo muestra el diseño). Null si es inalcanzable. */
+  /** Facturación mínima = unidades de equilibrio redondeadas hacia arriba × precio (no se puede vender media unidad; criterio de Data). Null si es inalcanzable. */
   facturacionMinima: DecimalString | null;
   estado: EstadoEquilibrio;
 }
@@ -87,7 +88,7 @@ export function analizarPrecio(calculo: EntradaPrecio, precioUnitario: DecimalSt
     const exacto = cft.dividedBy(contribucion);
     const redondeado = exacto.ceil();
     puntoEquilibrio = aDecimalString(redondeado);
-    facturacion = aDecimalString(exacto.times(precio));
+    facturacion = aDecimalString(redondeado.times(precio));
     estado = volumen.greaterThanOrEqualTo(redondeado) ? "supera" : "bajo";
   }
 
