@@ -147,6 +147,28 @@ export const PRECIO_INICIAL: Precio = {
   precioManual: "",
 };
 
+/** Escenario del simulador (paso 5): cuánto se mueve cada variable respecto de la situación base. */
+export interface EscenarioUsuario {
+  id: Id;
+  nombre: string;
+  /** Cambio porcentual (−50 a +100) del costo variable unitario. "0" = sin cambio. */
+  insumosPct: DecimalString;
+  /** Cambio porcentual (−50 a +100) del precio de venta. */
+  precioPct: DecimalString;
+  /** Cambio porcentual (−50 a +100) del volumen mensual. */
+  produccionPct: DecimalString;
+}
+
+/** Máximo de escenarios que se pueden tener a la vez. */
+export const MAX_ESCENARIOS = 6;
+
+/** Escenarios con los que arranca el simulador (ids fijos: mismo estado en servidor y cliente). */
+export const ESCENARIOS_INICIALES: EscenarioUsuario[] = [
+  { id: "escenario-insumos", nombre: "Suba de insumos", insumosPct: "20", precioPct: "0", produccionPct: "0" },
+  { id: "escenario-precio", nombre: "Cambio de precio", insumosPct: "0", precioPct: "15", produccionPct: "0" },
+  { id: "escenario-produccion", nombre: "Más producción", insumosPct: "0", precioPct: "0", produccionPct: "30" },
+];
+
 export interface Calculo {
   id: Id;
   configuracion: Configuracion;
@@ -155,6 +177,7 @@ export interface Calculo {
   costosIndirectos: CostoIndirecto[];
   trabajoPropio: TrabajoPropio;
   precio: Precio;
+  escenarios: EscenarioUsuario[];
   /** Paso en el que quedó el usuario (para retomar). */
   pasoActual: PasoRecorrido;
   creadoEn: string; // ISO 8601
