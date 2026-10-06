@@ -106,27 +106,42 @@ function cambioPct(nuevo: Decimal, base: Decimal): DecimalString | null {
  * Simula un escenario. `variacionPct` va de −50 a +100 (se limita a ese rango).
  * Null si falta el volumen o el precio.
  */
-export function simularEscenario(
+export interface VariacionesEscenario {
+  /** Cambio porcentual en el costo variable unitario. Sin valor = sin cambio. */
+  insumosPct?: DecimalString;
+  /** Cambio porcentual en el precio de venta. Sin valor = sin cambio. */
+  precioPct?: DecimalString;
+  /** Cambio porcentual en el volumen mensual. Sin valor = sin cambio. */
+  produccionPct?: DecimalString;
+}
+
+/** Factor multiplicador (1 + pct/100) con el pct limitado al rango permitido. Null si el valor no es un número. */
+function factorDe(pct: DecimalString | undefined): Decimal | null {
+  if (pct === undefined) return new Decimal(1);
+  const v = leerNumero(pct);
+  if (!v) return null;
+  const limitada = Decimal.min(Decimal.max(v, VARIACION_MINIMA_PCT), VARIACION_MAXIMA_PCT);
+  return new Decimal(1).plus(limitada.dividedBy(100));
+}
+
+/**
+ * Simula un escenario que puede mover insumos, precio y volumen a la vez.
+ * Cada variación va de −50 a +100 (se limita a ese rango). Null si falta el volumen o el precio,
+ * o si alguna variación no es un número.
+ */
+export function simularVariaciones(
   calculo: EntradaEscenario,
   precioUnitario: DecimalString,
-  tipo: TipoEscenario,
-  variacionPct: DecimalString,
+  variaciones: VariacionesEscenario,
 ): ResultadoEscenario | null {
   const d = datosBase(calculo, precioUnitario);
-  const v = leerNumero(variacionPct);
-  if (!d || !v) return null;
-
-  const limitada = Decimal.min(Decimal.max(v, VARIACION_MINIMA_PCT), VARIACION_MAXIMA_PCT);
-  const factor = new Decimal(1).plus(limitada.dividedBy(100));
+  const fInsumos = factorDe(variaciones.insumosPct);
+  const fPrecio = factorDe(variaciones.precioPct);
+  const fProduccion = factorDe(variaciones.produccionPct);
+  if (!d || !fInsumos || !fPrecio || !fProduccion) return null;
 
   const base = calcular(d.cft, d.cvu, d.volumen, d.precio);
-  const nuevo = calcular(
-    d.cft,
-    tipo === "insumos" ? d.cvu.times(factor) : d.cvu,
-    tipo === "produccion" ? d.volumen.times(factor) : d.volumen,
-    tipo === "precio" ? d.precio.times(factor) : d.precio,
-  );
-
+  const nuevo = calcular(d.cft, d.cvu.times(fInsumos), d.volumen.times(fProduccion), d.precio.times(fPrecio));
   const exactoNuevo = nuevo.equilibrioExacto;
 
   return {
@@ -138,6 +153,20 @@ export function simularEscenario(
       gananciaPct: cambioPct(new Decimal(nuevo.gananciaMensual), new Decimal(base.gananciaMensual)),
     },
   };
+}
+
+/** Un escenario de una sola variable. Se mantiene por compatibilidad: delega en `simularVariaciones`. */
+export function simularEscenario(
+  calculo: EntradaEscenario,
+  precioUnitario: DecimalString,
+  tipo: TipoEscenario,
+  variacionPct: DecimalString,
+): ResultadoEscenario | null {
+  return simularVariaciones(calculo, precioUnitario, {
+    insumosPct: tipo === "insumos" ? variacionPct : undefined,
+    precioPct: tipo === "precio" ? variacionPct : undefined,
+    produccionPct: tipo === "produccion" ? variacionPct : undefined,
+  });
 }
 
 /** Meta de ventas sugerida: al menos 30 % por encima del punto de equilibrio (mismo criterio del consejo del paso 4). */
