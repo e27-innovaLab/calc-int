@@ -215,6 +215,8 @@ function Resultados({
 }) {
   const pierdePorUnidad = Number(analisis.contribucion) <= 0;
   const ganancia = Number(analisis.gananciaNetaMensual);
+  // Costos fijos = 0: el equilibrio da 0 unidades y $0, y no es un error (ganás desde la primera venta).
+  const sinCostosFijos = analisis.estado !== "inalcanzable" && Number(analisis.puntoEquilibrioUnidades) === 0;
 
   return (
     <>
@@ -290,18 +292,32 @@ function Resultados({
                 <p className="mt-1 text-sm text-gray-200">Facturación mínima: {formatearMonto(analisis.facturacionMinima)}</p>
               </>
             ) : (
-              <p className="mt-1 text-xl font-bold">No se alcanza con este precio</p>
+              <>
+                {/* Sin equilibrio posible (contribución ≤ 0): guion en lugar de cifras. */}
+                <p className="mt-1 text-3xl font-extrabold">-</p>
+                <p className="mt-1 text-sm text-gray-200">Facturación mínima: -</p>
+              </>
             )}
           </div>
           <EstadoEquilibrio estado={analisis.estado} />
         </div>
-        <p className={`mt-4 text-sm font-medium ${analisis.estado === "supera" ? "text-success-100" : "text-warning-500"}`}>
-          {analisis.estado === "supera"
-            ? "¡Estás vendiendo bien por encima de tu piso! Cada unidad extra ya es ganancia pura."
-            : analisis.estado === "bajo"
-              ? "Necesitás aumentar el volumen o el precio para cubrir tus costos fijos."
-              : "Subí el precio por encima de tu costo variable por unidad para poder cubrir los costos fijos."}
-        </p>
+        {analisis.estado === "inalcanzable" ? (
+          <p
+            role="alert"
+            className="mt-4 rounded-xl border border-danger-100 bg-danger-50 p-3 text-sm font-semibold text-danger-700"
+          >
+            ¡Atención! Tu precio no llega a cubrir el costo de tus materiales. Estás perdiendo dinero con cada venta y es
+            imposible alcanzar el equilibrio. Subí tu precio urgente.
+          </p>
+        ) : (
+          <p className={`mt-4 text-sm font-medium ${analisis.estado === "supera" ? "text-success-100" : "text-warning-500"}`}>
+            {sinCostosFijos
+              ? "Al no tener costos fijos, no tenés un punto de equilibrio mínimo. ¡Empezás a generar ganancia desde tu primera venta!"
+              : analisis.estado === "supera"
+                ? "¡Estás vendiendo bien por encima de tu piso! Cada unidad extra ya es ganancia pura."
+                : "Necesitás aumentar el volumen o el precio para cubrir tus costos fijos."}
+          </p>
+        )}
         {volumen ? <p className="sr-only">Producís {formatearCantidad(volumen)} unidades por mes.</p> : null}
       </section>
 

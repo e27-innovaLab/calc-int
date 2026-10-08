@@ -38,6 +38,12 @@ export function GraficoPrecio() {
         <p className="mt-6 rounded-xl bg-gray-50 p-4 text-sm text-gray-500">
           Elegí tu precio para ver cuándo se cruzan tus ingresos con tus costos.
         </p>
+      ) : analisis?.estado === "inalcanzable" ? (
+        // Contribución ≤ 0: las líneas nunca se cruzan, así que el gráfico queda bloqueado.
+        <p className="mt-6 rounded-xl border border-danger-100 bg-danger-50 p-4 text-sm font-medium text-danger-700">
+          Con este precio no hay punto de equilibrio, por eso no mostramos el gráfico. Subí tu precio por encima del costo
+          de tus materiales para verlo.
+        </p>
       ) : (
         <Grafico grafico={grafico} equilibrio={analisis?.puntoEquilibrioUnidades ?? null} />
       )}

@@ -105,6 +105,19 @@ describe("casos límite", () => {
     expect(analizarPrecio(torta, "85")!.estado).toBe("inalcanzable");
   });
 
+  it("sin costos fijos (issue #7): equilibrio en 0 unidades y facturación mínima $0, sin error", () => {
+    const sinFijos: Entrada = {
+      ...torta,
+      costosFijos: [],
+      costosIndirectos: [],
+      trabajoPropio: { ...torta.trabajoPropio, incluir: false },
+    };
+    const a = analizarPrecio(sinFijos, "200")!;
+    expect(a.puntoEquilibrioUnidades).toBe("0");
+    expect(a.facturacionMinima).toBe("0");
+    expect(a.estado).toBe("supera");
+  });
+
   it("sin volumen o con precio inválido devuelve null", () => {
     expect(analizarPrecio({ ...torta, configuracion: { ...torta.configuracion, volumenMensual: "" } }, "100")).toBeNull();
     expect(analizarPrecio(torta, "0")).toBeNull();
