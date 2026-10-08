@@ -1,4 +1,4 @@
-import {Decimal} from "decimal.js";
+import { Decimal } from "decimal.js";
 import { CalculateRequest } from "../schemas/calculator.schema.js";
 
 const CERO = new Decimal(0);
@@ -97,12 +97,21 @@ export class CalculatorService {
       let estado: "supera" | "bajo" | "inalcanzable" = "inalcanzable";
 
       if (contribucion.greaterThan(0)) {
-        const exacto = costoFijoTotal.dividedBy(contribucion);
-        const redondeado = exacto.ceil();
-        puntoEquilibrio = redondeado.toString();
-        facturacionMinima = exacto.times(precioElegidoDecimal).toString();
-        estado = volumenValido.greaterThanOrEqualTo(redondeado) ? "supera" : "bajo";
+        if (costoFijoTotal.isZero()) {
+          // Caso límite 1 (Issue #7): Si Costos Fijos = 0
+          puntoEquilibrio = "0";
+          facturacionMinima = "0";
+          estado = "supera";
+        } else {
+          // Cálculo normal de punto de equilibrio
+          const exacto = costoFijoTotal.dividedBy(contribucion);
+          const redondeado = exacto.ceil();
+          puntoEquilibrio = redondeado.toString();
+          facturacionMinima = redondeado.times(precioElegidoDecimal).toString();
+          estado = volumenValido.greaterThanOrEqualTo(redondeado) ? "supera" : "bajo";
+        }
       }
+      // Nota: Si contribucion <= 0 (Issue #8), el estado permanece como "inalcanzable" y puntoEquilibrio/facturacionMinima en null.
 
       analisisPrecio = {
         precio: precioElegidoDecimal.toString(),
@@ -138,15 +147,23 @@ export class CalculatorService {
         const nuevosIngresos = nuevoPrecio.times(nuevoVolumen);
         const nuevaGanancia = nuevosIngresos.minus(nuevoCostoTotal);
         const nuevaContribucion = nuevoPrecio.minus(nuevoCvu);
-        const nuevoEquilibrioExacto = nuevaContribucion.greaterThan(0) ? costoFijoTotal.dividedBy(nuevaContribucion) : null;
+
+        let nuevoEquilibrioStr: string | null = null;
+        if (nuevaContribucion.greaterThan(0)) {
+          nuevoEquilibrioStr = costoFijoTotal.isZero()
+            ? "0"
+            : costoFijoTotal.dividedBy(nuevaContribucion).ceil().toString();
+        }
 
         simulacion = {
           costoUnitario: nuevoCostoTotal.dividedBy(nuevoVolumen).toString(),
           precio: nuevoPrecio.toString(),
-          puntoEquilibrio: nuevoEquilibrioExacto ? nuevoEquilibrioExacto.ceil().toString() : null,
+          puntoEquilibrio: nuevoEquilibrioStr,
           gananciaMensual: nuevaGanancia.toString(),
           margenNetoPct: nuevosIngresos.isZero() ? "0" : nuevaGanancia.dividedBy(nuevosIngresos).times(100).toString(),
-          metaVentas: nuevoEquilibrioExacto ? nuevoEquilibrioExacto.ceil().times("1.3").ceil().toString() : null,
+          metaVentas: nuevoEquilibrioStr !== null
+            ? (nuevoEquilibrioStr === "0" ? "0" : new Decimal(nuevoEquilibrioStr).times("1.3").ceil().toString())
+            : null,
         };
       }
     }
