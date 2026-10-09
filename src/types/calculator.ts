@@ -1,47 +1,29 @@
-import {Decimal} from "decimal.js";
+// Re-exportamos los tipos del dominio centralizado como única fuente de verdad.
+import type {
+  Configuracion,
+  CostoFijo,
+  CostoVariable,
+  CostoIndirecto,
+  TrabajoPropio,
+  Calculo,
+  ResultadoCostos,
+  DecimalString
+} from "@/domain/types";
 
-//Sincronizacion exacta con frontend
-// Mapeamos la estructura Calculo que viene de la UI a los DTOs de entrada y salida del motor de cálculo.
+export type { DecimalString, Calculo };
 
-export type DecimalString = string;
+// Alias para mantener compatibilidad con las referencias de los controladores/API
+export type ConfiguracionInput = Configuracion;
+export type TrabajoPropioInput = TrabajoPropio;
 
-export interface ConfiguracionInput {
-  tipo: "producto" | "servicio";
-  nombre: string;
-  moneda: "ARS" | "USD";
-  periodo: "semanal" | "mensual" | "anual";
-  unidadVenta: string;
-  volumenEstimado: DecimalString;
-}
-
-export interface ConceptoCostoInput {
-  id: string;
-  nombre: string;
-  montoPeriodo?: DecimalString;  // Para fijos
-  montoUnitario?: DecimalString; // Para variables
-  monto?: DecimalString;         // Para indirectos
-  base?: "periodo" | "unidad";   // Para indirectos
-}
-
-export interface TrabajoPropioInput {
-  incluir: boolean;
-  horasPeriodo: DecimalString;
-  valorHora: DecimalString;
-}
-
+// Definición unificada para el DTO de entrada del cálculo
 export interface CalculoInputDTO {
-  configuracion: ConfiguracionInput;
-  costosFijos: ConceptoCostoInput[];
-  costosVariables: ConceptoCostoInput[];
-  costosIndirectos: ConceptoCostoInput[];
-  trabajoPropio: TrabajoPropioInput;
+  configuracion: Configuracion;
+  costosFijos: CostoFijo[];
+  costosVariables: CostoVariable[];
+  costosIndirectos: CostoIndirecto[];
+  trabajoPropio: TrabajoPropio;
 }
 
-export interface ResultadoCostosDTO {
-  totalCostosFijos: DecimalString;
-  costoVariableUnitario: DecimalString;
-  totalIndirectosPeriodo: DecimalString;
-  totalTrabajoPropio: DecimalString;
-  costoTotalPeriodo: DecimalString;
-  costoUnitario: DecimalString;
-}
+// Usamos directamente la interfaz oficial del dominio
+export type ResultadoCostosDTO = ResultadoCostos;
