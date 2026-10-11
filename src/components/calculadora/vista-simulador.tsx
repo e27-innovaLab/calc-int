@@ -7,55 +7,20 @@ import { Aviso } from "@/components/ui/aviso";
 import { Boton, BotonLink } from "@/components/ui/boton";
 import { DialogoConfirmar } from "@/components/ui/dialogo-confirmar";
 import { Tarjeta } from "@/components/ui/tarjeta";
+import type { CambiosEscenario } from "@/domain/calculo";
 import {
   metaDeVentas,
-  simularEscenario,
+  simularVariaciones,
   situacionBase,
   VARIACION_MAXIMA_PCT,
   VARIACION_MINIMA_PCT,
   type ResultadoEscenario,
-  type TipoEscenario,
 } from "@/domain/motor/escenarios";
+import { MAX_ESCENARIOS, type EscenarioUsuario } from "@/domain/types";
 import { useAnalisisPrecio } from "@/hooks/use-analisis-precio";
 import { useHidratado } from "@/hooks/use-hidratado";
 import { formatearCantidad, formatearMonto, formatearPorcentaje, formatearVariacion } from "@/lib/formato";
 import { useCalculoStore } from "@/store/calculo-store";
-
-interface DefinicionEscenario {
-  tipo: TipoEscenario;
-  icono: string;
-  titulo: string;
-  descripcion: string;
-  etiquetaSlider: string;
-  inicial: number;
-}
-
-const ESCENARIOS: DefinicionEscenario[] = [
-  {
-    tipo: "insumos",
-    icono: "📉",
-    titulo: "Suba de insumos",
-    descripcion: "Simulá qué pasa si los materiales suben de precio.",
-    etiquetaSlider: "Variación en costos variables",
-    inicial: 20,
-  },
-  {
-    tipo: "precio",
-    icono: "💲",
-    titulo: "Cambio de precio",
-    descripcion: "Probá qué pasa si subís o bajás tu precio al público.",
-    etiquetaSlider: "Variación en precio de venta",
-    inicial: 15,
-  },
-  {
-    tipo: "produccion",
-    icono: "🏭",
-    titulo: "Más producción",
-    descripcion: "¿Qué pasa si producís y vendés más unidades al mes?",
-    etiquetaSlider: "Variación en volumen de producción",
-    inicial: 30,
-  },
-];
 
 function Esqueleto() {
   return (
@@ -76,13 +41,13 @@ export function VistaSimulador() {
 function Simulador() {
   const router = useRouter();
   const reiniciar = useCalculoStore((s) => s.reiniciar);
+  const agregarEscenario = useCalculoStore((s) => s.agregarEscenario);
+  const duplicarEscenario = useCalculoStore((s) => s.duplicarEscenario);
+  const actualizarEscenario = useCalculoStore((s) => s.actualizarEscenario);
+  const eliminarEscenario = useCalculoStore((s) => s.eliminarEscenario);
   const { calculo, precio, analisis } = useAnalisisPrecio();
-  const [variaciones, setVariaciones] = useState<Record<TipoEscenario, number>>({
-    insumos: ESCENARIOS[0].inicial,
-    precio: ESCENARIOS[1].inicial,
-    produccion: ESCENARIOS[2].inicial,
-  });
   const [confirmandoReinicio, setConfirmandoReinicio] = useState(false);
+  const [idAEliminar, setIdAEliminar] = useState<string | null>(null);
 
   const base = precio ? situacionBase(calculo, precio) : null;
 
@@ -97,6 +62,10 @@ function Simulador() {
   }
 
   const meta = metaDeVentas(analisis?.puntoEquilibrioUnidades ?? null);
+  const escenarios = calculo.escenarios;
+  const llegoAlMaximo = escenarios.length >= MAX_ESCENARIOS;
+  const escenarioAEliminar = escenarios.find((e) => e.id === idAEliminar) ?? null;
+  const pctInsumos = escenarios.find((e) => Number(e.insumosPct) > 0)?.insumosPct;
 
   return (
     <div className="flex flex-col gap-8">
@@ -122,21 +91,40 @@ function Simulador() {
         </dl>
       </section>
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        {ESCENARIOS.map((def) => (
-          <TarjetaEscenario
-            key={def.tipo}
-            def={def}
-            variacion={variaciones[def.tipo]}
-            resultado={simularEscenario(calculo, precio, def.tipo, String(variaciones[def.tipo]))}
-            onCambiar={(v) => setVariaciones((actual) => ({ ...actual, [def.tipo]: v }))}
-          />
-        ))}
+      {escenarios.length === 0 ? (
+        <Aviso tono="consejo">No tenés escenarios. Agregá uno para empezar a comparar.</Aviso>
+      ) : (
+        <div className="grid gap-4 lg:grid-cols-3">
+          {escenarios.map((escenario) => (
+            <TarjetaEscenario
+              key={escenario.id}
+              escenario={escenario}
+              resultado={simularVariaciones(calculo, precio, {
+                insumosPct: escenario.insumosPct,
+                precioPct: escenario.precioPct,
+                produccionPct: escenario.produccionPct,
+              })}
+              puedeDuplicar={!llegoAlMaximo}
+              onCambiar={(cambios) => actualizarEscenario(escenario.id, cambios)}
+              onDuplicar={() => duplicarEscenario(escenario.id)}
+              onEliminar={() => setIdAEliminar(escenario.id)}
+            />
+          ))}
+        </div>
+      )}
+
+      <div className="flex flex-wrap items-center gap-3">
+        <Boton variante="secundario" onClick={() => agregarEscenario()} disabled={llegoAlMaximo}>
+          + Agregar escenario
+        </Boton>
+        <span className="text-sm text-gray-500">
+          {escenarios.length} de {MAX_ESCENARIOS} escenarios
+        </span>
       </div>
 
       <Aviso tono="consejo">
         El escenario de suba de insumos es el más importante. Los materiales siempre suben. ¿Tu negocio sigue siendo
-        rentable con un {variaciones.insumos}% más de costo?
+        rentable{pctInsumos ? ` con un ${pctInsumos}% más de costo` : " si suben tus costos"}?
       </Aviso>
 
       <Tarjeta aria-labelledby="siguiente-paso" className="flex flex-col gap-4">
@@ -164,6 +152,20 @@ function Simulador() {
         </BotonLink>
         <Boton onClick={() => setConfirmandoReinicio(true)}>Calcular otro producto</Boton>
       </div>
+
+      <DialogoConfirmar
+        abierto={escenarioAEliminar !== null}
+        titulo="¿Eliminar este escenario?"
+        descripcion={
+          escenarioAEliminar ? `Vas a eliminar «${escenarioAEliminar.nombre}». Esta acción no se puede deshacer.` : ""
+        }
+        etiquetaConfirmar="Sí, eliminar"
+        onCancelar={() => setIdAEliminar(null)}
+        onConfirmar={() => {
+          if (idAEliminar) eliminarEscenario(idAEliminar);
+          setIdAEliminar(null);
+        }}
+      />
 
       <DialogoConfirmar
         abierto={confirmandoReinicio}
@@ -202,58 +204,116 @@ function SiguientePaso({ icono, titulo, children }: { icono: string; titulo: str
 }
 
 function TarjetaEscenario({
-  def,
-  variacion,
+  escenario,
   resultado,
+  puedeDuplicar,
   onCambiar,
+  onDuplicar,
+  onEliminar,
 }: {
-  def: DefinicionEscenario;
-  variacion: number;
+  escenario: EscenarioUsuario;
   resultado: ResultadoEscenario | null;
-  onCambiar: (valor: number) => void;
+  puedeDuplicar: boolean;
+  onCambiar: (cambios: CambiosEscenario) => void;
+  onDuplicar: () => void;
+  onEliminar: () => void;
 }) {
-  const idSlider = `slider-${def.tipo}`;
-  const signo = variacion > 0 ? "+" : "";
+  const idNombre = `nombre-${escenario.id}`;
 
   return (
-    <Tarjeta aria-labelledby={`titulo-${def.tipo}`} className="flex flex-col gap-4">
+    <Tarjeta aria-labelledby={idNombre} className="flex flex-col gap-4">
       <div>
-        <h2 id={`titulo-${def.tipo}`} className="flex items-center gap-2 text-base font-semibold text-gray-900">
-          <span aria-hidden="true">{def.icono}</span>
-          {def.titulo}
-        </h2>
-        <p className="mt-1 text-sm text-gray-500">{def.descripcion}</p>
+        <label htmlFor={idNombre} className="sr-only">
+          Nombre del escenario
+        </label>
+        <input
+          id={idNombre}
+          type="text"
+          value={escenario.nombre}
+          maxLength={40}
+          onChange={(e) => onCambiar({ nombre: e.target.value })}
+          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-base font-semibold text-gray-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600"
+        />
       </div>
 
-      <div>
-        <div className="flex items-baseline justify-between gap-2 text-sm">
-          <label htmlFor={idSlider} className="text-gray-700">
-            {def.etiquetaSlider}
-          </label>
-          <output htmlFor={idSlider} className="font-semibold text-primary-600">
-            {signo}
-            {variacion}%
-          </output>
-        </div>
-        <input
-          id={idSlider}
-          type="range"
-          min={VARIACION_MINIMA_PCT}
-          max={VARIACION_MAXIMA_PCT}
-          step={1}
-          value={variacion}
-          aria-valuetext={`${signo}${variacion} por ciento`}
-          onChange={(e) => onCambiar(Number(e.target.value))}
-          className="mt-2 h-2 w-full cursor-pointer accent-primary-600"
+      <div className="flex flex-col gap-3">
+        <ControlVariacion
+          id={`insumos-${escenario.id}`}
+          etiqueta="Variación en costos variables"
+          valor={escenario.insumosPct}
+          onCambiar={(v) => onCambiar({ insumosPct: v })}
         />
-        <div className="mt-1 flex justify-between text-xs text-gray-500" aria-hidden="true">
-          <span>{VARIACION_MINIMA_PCT}%</span>
-          <span>+{VARIACION_MAXIMA_PCT}%</span>
-        </div>
+        <ControlVariacion
+          id={`precio-${escenario.id}`}
+          etiqueta="Variación en precio de venta"
+          valor={escenario.precioPct}
+          onCambiar={(v) => onCambiar({ precioPct: v })}
+        />
+        <ControlVariacion
+          id={`produccion-${escenario.id}`}
+          etiqueta="Variación en volumen de producción"
+          valor={escenario.produccionPct}
+          onCambiar={(v) => onCambiar({ produccionPct: v })}
+        />
       </div>
 
       {resultado ? <Resultado resultado={resultado} /> : null}
+
+      <div className="flex flex-wrap gap-2">
+        {puedeDuplicar ? (
+          <Boton variante="secundario" onClick={onDuplicar}>
+            Duplicar<span className="sr-only"> {escenario.nombre}</span>
+          </Boton>
+        ) : null}
+        <Boton variante="secundario" onClick={onEliminar}>
+          Eliminar<span className="sr-only"> {escenario.nombre}</span>
+        </Boton>
+      </div>
     </Tarjeta>
+  );
+}
+
+function ControlVariacion({
+  id,
+  etiqueta,
+  valor,
+  onCambiar,
+}: {
+  id: string;
+  etiqueta: string;
+  valor: string;
+  onCambiar: (valor: string) => void;
+}) {
+  const numero = Number(valor);
+  const signo = numero > 0 ? "+" : "";
+
+  return (
+    <div>
+      <div className="flex items-baseline justify-between gap-2 text-sm">
+        <label htmlFor={id} className="text-gray-700">
+          {etiqueta}
+        </label>
+        <output htmlFor={id} className="font-semibold text-primary-600">
+          {signo}
+          {numero}%
+        </output>
+      </div>
+      <input
+        id={id}
+        type="range"
+        min={VARIACION_MINIMA_PCT}
+        max={VARIACION_MAXIMA_PCT}
+        step={1}
+        value={numero}
+        aria-valuetext={`${signo}${numero} por ciento`}
+        onChange={(e) => onCambiar(e.target.value)}
+        className="mt-2 h-2 w-full cursor-pointer accent-primary-600"
+      />
+      <div className="mt-1 flex justify-between text-xs text-gray-500" aria-hidden="true">
+        <span>{VARIACION_MINIMA_PCT}%</span>
+        <span>+{VARIACION_MAXIMA_PCT}%</span>
+      </div>
+    </div>
   );
 }
 
