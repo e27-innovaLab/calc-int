@@ -2,11 +2,14 @@ import { horasMensualesDesdeLotes, volumenDesdeLotes } from "@/domain/motor/cost
 import { estaVacio } from "@/domain/motor/numeros";
 import {
   CONFIGURACION_INICIAL,
+  ESCENARIOS_INICIALES,
+  MAX_ESCENARIOS,
   PRECIO_INICIAL,
   TRABAJO_PROPIO_INICIAL,
   type CategoriaCosto,
   type Calculo,
   type Configuracion,
+  type EscenarioUsuario,
   type PasoRecorrido,
   type Precio,
   type TrabajoPropio,
@@ -41,6 +44,7 @@ export function crearCalculoInicial(): Calculo {
     costosIndirectos: [],
     trabajoPropio: { ...TRABAJO_PROPIO_INICIAL },
     precio: { ...PRECIO_INICIAL },
+    escenarios: ESCENARIOS_INICIALES.map((e) => ({ ...e })),
     pasoActual: "configuracion",
     creadoEn: EPOCH,
     actualizadoEn: EPOCH,
@@ -193,4 +197,60 @@ export function actualizarPrecio(calculo: Calculo, cambios: Partial<Precio>, aho
 
 export function cambiarPaso(calculo: Calculo, paso: PasoRecorrido, ahora: string): Calculo {
   return tocar({ ...calculo, pasoActual: paso }, ahora);
+}
+
+/** Datos que se pueden cambiar de un escenario. */
+export interface CambiosEscenario {
+  nombre?: string;
+  insumosPct?: string;
+  precioPct?: string;
+  produccionPct?: string;
+}
+
+/** Agrega un escenario sin cambios. No hace nada si ya se alcanzó el máximo. */
+export function agregarEscenario(calculo: Calculo, id: string, ahora: string): Calculo {
+  if (calculo.escenarios.length >= MAX_ESCENARIOS) return calculo;
+  const nuevo: EscenarioUsuario = {
+    id,
+    nombre: `Escenario ${calculo.escenarios.length + 1}`,
+    insumosPct: "0",
+    precioPct: "0",
+    produccionPct: "0",
+  };
+  return tocar({ ...calculo, escenarios: [...calculo.escenarios, nuevo] }, ahora);
+}
+
+/** Copia un escenario y deja la copia justo a continuación. No hace nada si no existe o si se alcanzó el máximo. */
+export function duplicarEscenario(calculo: Calculo, idOrigen: string, idNuevo: string, ahora: string): Calculo {
+  if (calculo.escenarios.length >= MAX_ESCENARIOS) return calculo;
+  const posicion = calculo.escenarios.findIndex((e) => e.id === idOrigen);
+  if (posicion === -1) return calculo;
+  const origen = calculo.escenarios[posicion];
+  const copia: EscenarioUsuario = { ...origen, id: idNuevo, nombre: `${origen.nombre} (copia)` };
+  const escenarios = [...calculo.escenarios.slice(0, posicion + 1), copia, ...calculo.escenarios.slice(posicion + 1)];
+  return tocar({ ...calculo, escenarios }, ahora);
+}
+
+export function actualizarEscenario(calculo: Calculo, id: string, cambios: CambiosEscenario, ahora: string): Calculo {
+  return tocar(
+    {
+      ...calculo,
+      escenarios: calculo.escenarios.map((e) =>
+        e.id === id
+          ? {
+              ...e,
+              nombre: cambios.nombre ?? e.nombre,
+              insumosPct: cambios.insumosPct ?? e.insumosPct,
+              precioPct: cambios.precioPct ?? e.precioPct,
+              produccionPct: cambios.produccionPct ?? e.produccionPct,
+            }
+          : e,
+      ),
+    },
+    ahora,
+  );
+}
+
+export function eliminarEscenario(calculo: Calculo, id: string, ahora: string): Calculo {
+  return tocar({ ...calculo, escenarios: calculo.escenarios.filter((e) => e.id !== id) }, ahora);
 }

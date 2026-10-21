@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import { CONFIGURACION_INICIAL, type Calculo } from "@/domain/types";
 
-import { metaDeVentas, simularEscenario, situacionBase } from "./escenarios";
+import { metaDeVentas, simularEscenario, simularVariaciones, situacionBase } from "./escenarios";
 import { precioPorMargen } from "./precio";
 
 const redondear = (v: string | null, d = 0) => new Decimal(v ?? "0").toDecimalPlaces(d).toFixed(d);
@@ -121,5 +121,54 @@ describe("metaDeVentas", () => {
   });
   it("null sin equilibrio", () => {
     expect(metaDeVentas(null)).toBeNull();
+  });
+});
+
+describe("simularVariaciones (varias variables a la vez)", () => {
+  it("con una sola variación da lo mismo que simularEscenario", () => {
+    expect(simularVariaciones(torta, precio, { insumosPct: "20" })).toEqual(
+      simularEscenario(torta, precio, "insumos", "20"),
+    );
+    expect(simularVariaciones(torta, precio, { precioPct: "15" })).toEqual(
+      simularEscenario(torta, precio, "precio", "15"),
+    );
+    expect(simularVariaciones(torta, precio, { produccionPct: "30" })).toEqual(
+      simularEscenario(torta, precio, "produccion", "30"),
+    );
+  });
+
+  it("sin variaciones devuelve la situación base, con cambios en cero", () => {
+    const base = situacionBase(torta, precio)!;
+    const r = simularVariaciones(torta, precio, {})!;
+    expect(r).toMatchObject(base);
+    expect(Number(r.variaciones.costoUnitarioPct)).toBe(0);
+    expect(Number(r.variaciones.precioPct)).toBe(0);
+    expect(Number(r.variaciones.equilibrioPct)).toBe(0);
+    expect(Number(r.variaciones.gananciaPct)).toBe(0);
+  });
+
+  it("insumos +20 % y precio +10 % juntos: costo $4.237, equilibrio 65, ganancia $419.960", () => {
+    const r = simularVariaciones(torta, precio, { insumosPct: "20", precioPct: "10" })!;
+    expect(redondear(r.costoUnitario)).toBe("4237");
+    expect(r.puntoEquilibrio).toBe("65");
+    expect(redondear(r.gananciaMensual)).toBe("419960");
+  });
+
+  it("en un escenario combinado, cada variable conserva su efecto", () => {
+    const combinado = simularVariaciones(torta, precio, { insumosPct: "20", precioPct: "10" })!;
+    const soloInsumos = simularEscenario(torta, precio, "insumos", "20")!;
+    const soloPrecio = simularEscenario(torta, precio, "precio", "10")!;
+    expect(combinado.variaciones.costoUnitarioPct).toBe(soloInsumos.variaciones.costoUnitarioPct);
+    expect(combinado.variaciones.precioPct).toBe(soloPrecio.variaciones.precioPct);
+  });
+
+  it("limita cada variación al rango permitido (máximo +100 %)", () => {
+    expect(simularVariaciones(torta, precio, { precioPct: "500" })).toEqual(
+      simularVariaciones(torta, precio, { precioPct: "100" }),
+    );
+  });
+
+  it("devuelve null si una variación no es un número", () => {
+    expect(simularVariaciones(torta, precio, { insumosPct: "abc" })).toBeNull();
   });
 });
