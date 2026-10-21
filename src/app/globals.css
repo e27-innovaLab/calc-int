@@ -1,9 +1,9 @@
 @import "tailwindcss";
 
-/* Tema claro con los tokens del UI Kit / Foundation de Figma («PreciJusto»). */
+/* Tema claro con los tokens del UI Kit / Foundation de Figma («Preciar»). */
 :root {
-  --background: #fafafc;
-  --foreground: #1a1b23;
+  --background: #faf6ee;
+  --foreground: #101b3b;
   color-scheme: light;
 }
 
@@ -14,38 +14,44 @@
 }
 
 @theme {
-  /* Primario — azul PreciJusto (confianza) */
-  --color-primary-600: #155dfc;
-  --color-primary-700: #24379a;
-  --color-primary-100: #e7ebfc;
-  --color-primary-50: #f3f5fe;
+  /* Primario — azul marino de la marca (Lago Zafiro) */
+  --color-primary-700: #1b2d63;
+  --color-primary-600: #2b499f;
+  --color-primary-100: #cde9fb;
+  --color-primary-50: #e8f5fd;
+
+  /* Acento — celeste de la marca. SOLO sobre fondos oscuros: sobre blanco no pasa el contraste */
+  --color-accent-400: #58b4f0;
 
   /* Positivo — ganancias, éxito */
-  --color-success-600: #1e9e5a;
-  --color-success-700: #167f48;
-  --color-success-100: #e3f6ec;
-  --color-success-50: #f0fbf5;
+  --color-success-700: #156b34;
+  --color-success-600: #156b34;
+  --color-success-500: #31b561; /* solo decorativo, no usar con texto blanco */
+  --color-success-100: #c7ebd4;
+  --color-success-50: #e6f6ec;
 
   /* Negativo — pérdidas, error */
-  --color-danger-600: #dc2626;
-  --color-danger-700: #b91c1c;
-  --color-danger-100: #fbd7d5;
-  --color-danger-50: #fdeaea;
+  --color-danger-700: #6e1212;
+  --color-danger-600: #c02525;
+  --color-danger-100: #f2d9d9;
+  --color-danger-50: #f9eeee;
 
   /* Aviso — ayuda contextual, no crítico */
-  --color-warning-500: #f5b620;
-  --color-warning-700: #92720c;
-  --color-warning-100: #fdf0c8;
-  --color-warning-50: #fff8e8;
+  --color-warning-700: #7a5f10;
+  --color-warning-500: #dab33f;
+  --color-warning-100: #f4edd7;
+  --color-warning-50: #faf7ed;
 
   /* Escala de grises (texto, bordes, fondos) */
-  --color-gray-900: #1a1b23;
-  --color-gray-700: #454754;
-  --color-gray-500: #6b6d7a;
-  --color-gray-400: #9a9caa;
-  --color-gray-200: #e3e4ea;
-  --color-gray-100: #f2f3f6;
-  --color-gray-50: #fafafc;
+  --color-gray-900: #101b3b;
+  --color-gray-800: #303236;
+  --color-gray-700: #494b50;
+  --color-gray-500: #61646b;
+  --color-gray-400: #a1a4aa;
+  --color-gray-300: #c9cbcf;
+  --color-gray-200: #e4e5e7;
+  --color-gray-100: #f4f5f5;
+  --color-gray-50: #fafafa;
 }
 
 body {
