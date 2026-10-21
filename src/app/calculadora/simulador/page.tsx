@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 import { VistaSimulador } from "@/components/calculadora/vista-simulador";
 
-export const metadata: Metadata = { title: "Simulador · PreciJusto" };
+export const metadata: Metadata = { title: "Simulador · Preciar" };
 
 export default function SimuladorPage() {
   return <VistaSimulador />;
