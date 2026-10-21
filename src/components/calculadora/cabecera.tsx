@@ -17,7 +17,7 @@ export function Cabecera({ centro, derecha }: PropsCabecera) {
           <span aria-hidden="true" className="flex size-8 items-center justify-center rounded-lg bg-primary-600 text-sm font-bold text-white">
             P
           </span>
-          PreciJusto
+          Preciar
         </Link>
         {centro}
         <div className="min-w-16 max-w-48 truncate text-right text-sm text-gray-500">{derecha}</div>
@@ -30,7 +30,7 @@ export function Pie() {
   return (
     <footer className="mt-auto border-t border-gray-200 bg-white">
       <p className="mx-auto w-full max-w-6xl px-4 py-6 text-center text-sm text-gray-500 sm:px-6">
-        PreciJusto — Calculadora inteligente para emprendedores · Gratis · Sin registro · Privado
+        Preciar — Calculadora inteligente para emprendedores · Gratis · Sin registro · Privado
       </p>
     </footer>
   );
