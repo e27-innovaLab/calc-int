@@ -8,7 +8,7 @@ const jakarta = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Calculadora Inteligente",
+  title: "Preciar — Costos y precios claros",
   description: "Costos, precios y punto de equilibrio para emprendimientos",
 };
 

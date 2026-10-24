@@ -6,6 +6,8 @@ import { Aviso } from "@/components/ui/aviso";
 import { Ayuda } from "@/components/ui/ayuda";
 import { BotonLink } from "@/components/ui/boton";
 import { CampoMonto } from "@/components/ui/campo-monto";
+import { ComoSeCalcula } from "@/components/ui/como-se-calcula";
+import { GraficoPrecio } from "@/components/calculadora/grafico-precio";
 import { Tarjeta } from "@/components/ui/tarjeta";
 import { MARGEN_MAXIMO_PCT, nivelDeMargen, precioPorMargen, type NivelMargen } from "@/domain/motor/precio";
 import { useAnalisisPrecio } from "@/hooks/use-analisis-precio";
@@ -25,7 +27,7 @@ const MENSAJES_MARGEN: Record<NivelMargen, { texto: string; bueno: boolean }> = 
 
 const PESTAÑAS: { modo: ModoPrecio; etiqueta: string }[] = [
   { modo: "margen", etiqueta: "Precio por margen" },
-  { modo: "manual", etiqueta: "Ingresé mi precio" },
+  { modo: "manual", etiqueta: "Ingresá tu precio" },
 ];
 
 function Esqueleto() {
@@ -76,6 +78,7 @@ function Precio() {
   return (
     <div className="flex flex-col gap-8">
       <div>
+        <p className="mb-1 text-xs font-bold uppercase tracking-widest text-primary-600">Paso 4 de 5</p>
         <h1 className="text-3xl font-bold tracking-tight text-gray-900">¿A qué precio lo vas a vender?</h1>
         <p className="mt-2 text-lg text-gray-700">
           Podés dejar que te sugiramos un precio según tu margen esperado, o ingresar el tuyo directamente.
@@ -145,6 +148,12 @@ function Precio() {
                 </span>
                 <span className="absolute right-0">{MARGEN_MAXIMO_PCT}%</span>
               </div>
+              {/* Explicación del margen (Figma). Solo texto con el % elegido: no calcula nada. */}
+              <ComoSeCalcula
+                etiqueta="¿Cómo lo calculo?"
+                formula="De cada $100 que cobrás, ¿cuántos querés que te queden?"
+                cuenta={`Ej.: margen ${margen}% → de cada $100 cobrados, $${margen} son ganancia.`}
+              />
             </div>
 
             {nivel ? (
@@ -165,6 +174,12 @@ function Precio() {
               <p className="mt-1 text-2xl font-extrabold text-primary-600" aria-live="polite">
                 {formatearMonto(precioSugerido)}
               </p>
+              {precioSugerido ? (
+                <ComoSeCalcula
+                  formula="Costo unitario ÷ (1 − margen)"
+                  cuenta={`${formatearMonto(resumen.costoUnitario)} ÷ (1 − ${formatearPorcentaje(margenPct)}) = ${formatearMonto(precioSugerido)}`}
+                />
+              ) : null}
             </div>
           </Tarjeta>
         ) : (
@@ -189,7 +204,12 @@ function Precio() {
       </div>
 
       {analisis ? (
-        <Resultados analisis={analisis} volumen={resumen.volumenMensual} />
+        <Resultados
+          analisis={analisis}
+          volumen={resumen.volumenMensual}
+          costoVariable={resumen.costoVariableUnitario}
+          costoFijo={resumen.costoFijoTotalMensual}
+        />
       ) : (
         <Aviso tono="info">Ingresá tu precio de venta para ver tu contribución, tu ganancia y tu punto de equilibrio.</Aviso>
       )}
@@ -209,9 +229,14 @@ function Precio() {
 function Resultados({
   analisis,
   volumen,
+  costoVariable,
+  costoFijo,
 }: {
   analisis: NonNullable<ReturnType<typeof useAnalisisPrecio>["analisis"]>;
   volumen: string | null;
+  /** Solo para mostrar las cuentas en «Ver cómo se calcula». */
+  costoVariable: string;
+  costoFijo: string;
 }) {
   const pierdePorUnidad = Number(analisis.contribucion) <= 0;
   const ganancia = Number(analisis.gananciaNetaMensual);
@@ -249,6 +274,12 @@ function Resultados({
               Cada venta contribuye con {formatearMonto(analisis.contribucion)} para cubrir los costos fijos.
             </p>
           </>
+        )}
+        {pierdePorUnidad ? null : (
+          <ComoSeCalcula
+            formula="Precio de venta − costo variable por unidad"
+            cuenta={`${formatearMonto(analisis.precio)} − ${formatearMonto(costoVariable)} = ${formatearMonto(analisis.contribucion)}`}
+          />
         )}
       </section>
 
@@ -290,6 +321,13 @@ function Resultados({
               <>
                 <p className="mt-1 text-3xl font-extrabold">{formatearCantidad(analisis.puntoEquilibrioUnidades)} unidades</p>
                 <p className="mt-1 text-sm text-gray-200">Facturación mínima: {formatearMonto(analisis.facturacionMinima)}</p>
+                {sinCostosFijos ? null : (
+                  <ComoSeCalcula
+                    tono="oscuro"
+                    formula="Costo fijo total ÷ contribución por unidad, redondeado hacia arriba (no se puede vender media unidad)"
+                    cuenta={`${formatearMonto(costoFijo)} ÷ ${formatearMonto(analisis.contribucion)} → ${formatearCantidad(analisis.puntoEquilibrioUnidades)} unidades`}
+                  />
+                )}
               </>
             ) : (
               <>
@@ -320,6 +358,9 @@ function Resultados({
         )}
         {volumen ? <p className="sr-only">Producís {formatearCantidad(volumen)} unidades por mes.</p> : null}
       </section>
+
+      {/* En Figma el gráfico va a todo el ancho, debajo del punto de equilibrio. */}
+      <GraficoPrecio />
 
       <Aviso tono="consejo">
         El punto de equilibrio no es tu meta — es tu piso. Apuntá a vender al menos 30% más para tener una ganancia real.

@@ -14,7 +14,8 @@
 }
 
 @theme {
-  /* Primario — azul marino de la marca (Lago Zafiro) */
+  /* Primario — azul marino de la marca (Lago Zafiro). 900 = marino de Figma: botones y tarjetas destacadas */
+  --color-primary-900: #101b3b;
   --color-primary-700: #1b2d63;
   --color-primary-600: #2b499f;
   --color-primary-100: #cde9fb;

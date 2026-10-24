@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { ComponentProps } from "react";
 
-type Variante = "primario" | "secundario" | "peligro";
+type Variante = "primario" | "secundario" | "peligro" | "celeste";
 
 const BASE =
   "inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold transition-colors " +
@@ -9,9 +9,11 @@ const BASE =
   "disabled:cursor-not-allowed disabled:opacity-50";
 
 const VARIANTES: Record<Variante, string> = {
-  primario: "bg-primary-600 text-white shadow-sm hover:bg-primary-700",
+  primario: "bg-primary-900 text-white shadow-sm hover:bg-primary-700",
   secundario: "border border-gray-400 bg-white text-gray-700 hover:bg-gray-50",
   peligro: "bg-danger-700 text-white shadow-sm hover:bg-danger-600",
+  /** Solo sobre fondos oscuros (portada): celeste con texto marino. */
+  celeste: "bg-accent-400 text-primary-900 shadow-sm hover:bg-primary-100",
 };
 
 export function clasesBoton(variante: Variante = "primario", extra = ""): string {

@@ -9,14 +9,18 @@ import { useHidratado } from "@/hooks/use-hidratado";
 import { useCalculoStore } from "@/store/calculo-store";
 
 import { Cabecera, Pie } from "./cabecera";
-import { GraficoPrecio } from "./grafico-precio";
 import { Hidratador } from "./hidratador";
 import { Pasos } from "./pasos";
 import { ResumenEnVivo } from "./resumen-en-vivo";
 
+/** Píldora con el nombre del producto (o «Sin nombre» mientras no se cargó). */
 function NombreDelProducto() {
-  const nombre = useCalculoStore((s) => s.calculo.configuracion.nombre);
-  return <>{nombre.trim()}</>;
+  const nombre = useCalculoStore((s) => s.calculo.configuracion.nombre).trim();
+  return (
+    <span className="max-w-40 truncate rounded-md bg-warning-100 px-2.5 py-1 text-xs font-semibold text-gray-900">
+      {nombre || "Sin nombre"}
+    </span>
+  );
 }
 
 /** «Reiniciar»: borra el borrador y vuelve al paso 1, previa confirmación. */
@@ -30,8 +34,9 @@ function BotonReiniciar({ alReiniciar }: { alReiniciar: () => void }) {
       <button
         type="button"
         onClick={() => setConfirmando(true)}
-        className="text-sm font-medium text-gray-500 underline-offset-2 hover:text-gray-900 hover:underline focus-visible:outline-2 focus-visible:outline-primary-600"
+        className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-primary-700 hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-700"
       >
+        <span aria-hidden="true">↻</span>
         Reiniciar
       </button>
       <DialogoConfirmar
@@ -54,7 +59,6 @@ function BotonReiniciar({ alReiniciar }: { alReiniciar: () => void }) {
 export function Recorrido({ children }: { children: ReactNode }) {
   const hidratado = useHidratado();
   const ruta = usePathname();
-  const enPrecio = ruta === "/calculadora/precio";
   // El simulador usa todo el ancho: el diseño no lleva panel lateral en este paso.
   const sinPanel = ruta === "/calculadora/simulador";
   // Al reiniciar se vuelve a montar el contenido, así los formularios toman los valores iniciales.
@@ -67,7 +71,7 @@ export function Recorrido({ children }: { children: ReactNode }) {
         centro={<Pasos />}
         derecha={
           hidratado ? (
-            <div className="flex flex-col items-end gap-0.5">
+            <div className="flex items-center gap-2">
               <NombreDelProducto />
               <BotonReiniciar alReiniciar={() => setVersion((v) => v + 1)} />
             </div>
@@ -84,12 +88,8 @@ export function Recorrido({ children }: { children: ReactNode }) {
         </main>
         {sinPanel ? null : (
           <div className="lg:sticky lg:top-6 lg:self-start">
-            {/* En el paso «Precio» el diseño reemplaza el panel lateral por el gráfico de equilibrio. */}
-            {enPrecio ? (
-              <GraficoPrecio />
-            ) : hidratado ? (
-              <ResumenEnVivo />
-            ) : null}
+            {/* En Figma el panel «Resumen en vivo» se mantiene también en «Precio»; el gráfico pasó al contenido. */}
+            {hidratado ? <ResumenEnVivo /> : null}
           </div>
         )}
       </div>
