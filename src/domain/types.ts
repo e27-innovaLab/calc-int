@@ -119,7 +119,7 @@ export interface TrabajoPropio {
 // ─────────────────────────────────────────────
 
 /**
- * Pasos del recorrido, tal como los muestra el diseño (Figma «PreciJusto»):
+ * Pasos del recorrido, tal como los muestra el diseño (Figma «Preciar»):
  * Tu producto → Costos (pestañas Fijos y Variables) → Resumen → Precio → Simulador.
  * Trabajo propio e indirectos viven dentro del paso «costos».
  */

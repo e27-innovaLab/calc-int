@@ -79,6 +79,7 @@ function Formulario() {
   return (
     <form onSubmit={continuar} noValidate className="flex flex-col gap-8">
       <div>
+        <p className="mb-1 text-xs font-bold uppercase tracking-widest text-primary-600">Paso 1 de 5</p>
         <h1 className="text-3xl font-bold tracking-tight text-gray-900">Contame sobre tu producto</h1>
         <p className="mt-2 text-lg text-gray-700">
           Empezamos con lo básico. Esto personaliza todos los cálculos para tu negocio real.
@@ -110,10 +111,20 @@ function Formulario() {
         </Campo>
 
         <div className="grid gap-6 sm:grid-cols-2">
-          <Campo idControl="moneda" etiqueta="Moneda" descripcion="Por ahora calculamos solo en pesos argentinos.">
-            <select id="moneda" disabled className={`${clasesCampo(false)} bg-gray-50`} defaultValue="ARS">
+          {/* La aclaración va DEBAJO del desplegable (como en Figma) para que Moneda y Unidad de venta queden alineados. */}
+          <Campo idControl="moneda" etiqueta="Moneda">
+            <select
+              id="moneda"
+              disabled
+              aria-describedby="moneda-nota"
+              className={`${clasesCampo(false)} bg-gray-50`}
+              defaultValue="ARS"
+            >
               <option value="ARS">$ (Peso AR)</option>
             </select>
+            <p id="moneda-nota" className="text-sm text-gray-500">
+              Por ahora calculamos solo en pesos argentinos.
+            </p>
           </Campo>
 
           <Campo idControl="unidad-venta" etiqueta="Unidad de venta" error={errors.unidadVenta?.message} idError="unidad-venta-error">
@@ -145,7 +156,7 @@ function Formulario() {
                   disabled={!p.disponible}
                   className={`w-full rounded-xl border px-4 py-3 text-base font-medium ${
                     p.disponible
-                      ? "border-primary-600 bg-primary-600 text-white"
+                      ? "border-primary-900 bg-primary-900 text-white"
                       : "cursor-not-allowed border-gray-200 bg-gray-50 text-gray-500"
                   }`}
                 >
