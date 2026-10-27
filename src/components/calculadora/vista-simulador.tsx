@@ -4,11 +4,13 @@ import { useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
 
 import { ComparacionEscenarios, type EscenarioConResultado } from "@/components/calculadora/comparacion-escenarios";
+import { ResumenFinal } from "@/components/calculadora/resumen-final";
 import { Aviso } from "@/components/ui/aviso";
 import { Boton, BotonLink } from "@/components/ui/boton";
 import { DialogoConfirmar } from "@/components/ui/dialogo-confirmar";
 import { Tarjeta } from "@/components/ui/tarjeta";
 import type { CambiosEscenario } from "@/domain/calculo";
+import { compararConBase } from "@/domain/motor/comparacion";
 import {
   metaDeVentas,
   simularVariaciones,
@@ -16,6 +18,7 @@ import {
   VARIACION_MAXIMA_PCT,
   VARIACION_MINIMA_PCT,
   type ResultadoEscenario,
+  type Situacion,
 } from "@/domain/motor/escenarios";
 import { MAX_ESCENARIOS, type EscenarioUsuario } from "@/domain/types";
 import { useAnalisisPrecio } from "@/hooks/use-analisis-precio";
@@ -46,7 +49,7 @@ function Simulador() {
   const duplicarEscenario = useCalculoStore((s) => s.duplicarEscenario);
   const actualizarEscenario = useCalculoStore((s) => s.actualizarEscenario);
   const eliminarEscenario = useCalculoStore((s) => s.eliminarEscenario);
-  const { calculo, precio, analisis } = useAnalisisPrecio();
+  const { calculo, resumen, precio, analisis } = useAnalisisPrecio();
   const [confirmandoReinicio, setConfirmandoReinicio] = useState(false);
   const [idAEliminar, setIdAEliminar] = useState<string | null>(null);
 
@@ -111,6 +114,7 @@ function Simulador() {
             <TarjetaEscenario
               key={escenario.id}
               escenario={escenario}
+              base={base}
               resultado={resultados.get(escenario.id) ?? null}
               puedeDuplicar={!llegoAlMaximo}
               onCambiar={(cambios) => actualizarEscenario(escenario.id, cambios)}
@@ -136,6 +140,8 @@ function Simulador() {
         El escenario de suba de insumos es el más importante. Los materiales siempre suben. ¿Tu negocio sigue siendo
         rentable{pctInsumos ? ` con un ${pctInsumos}% más de costo` : " si suben tus costos"}?
       </Aviso>
+
+      {analisis ? <ResumenFinal calculo={calculo} resumen={resumen} analisis={analisis} /> : null}
 
       <Tarjeta aria-labelledby="siguiente-paso" className="flex flex-col gap-4">
         <h2 id="siguiente-paso" className="text-base font-semibold text-gray-900">
@@ -215,6 +221,7 @@ function SiguientePaso({ icono, titulo, children }: { icono: string; titulo: str
 
 function TarjetaEscenario({
   escenario,
+  base,
   resultado,
   puedeDuplicar,
   onCambiar,
@@ -222,6 +229,7 @@ function TarjetaEscenario({
   onEliminar,
 }: {
   escenario: EscenarioUsuario;
+  base: Situacion;
   resultado: ResultadoEscenario | null;
   puedeDuplicar: boolean;
   onCambiar: (cambios: CambiosEscenario) => void;
@@ -267,7 +275,7 @@ function TarjetaEscenario({
         />
       </div>
 
-      {resultado ? <Resultado resultado={resultado} /> : null}
+      {resultado ? <Resultado base={base} resultado={resultado} /> : null}
 
       <div className="flex flex-wrap gap-2">
         {puedeDuplicar ? (
@@ -327,8 +335,11 @@ function ControlVariacion({
   );
 }
 
-function Resultado({ resultado }: { resultado: ResultadoEscenario }) {
+function Resultado({ base, resultado }: { base: Situacion; resultado: ResultadoEscenario }) {
   const { variaciones } = resultado;
+  // El punto de equilibrio se muestra en unidades enteras (redondeado hacia arriba): el porcentaje sale de esas mismas
+  // unidades, igual que en la tabla de comparación, para que la tarjeta y la tabla nunca digan cosas distintas.
+  const equilibrioPct = compararConBase(base, resultado).puntoEquilibrio.porcentaje;
   return (
     <div aria-live="polite" className="flex flex-col gap-3">
       <dl className="grid grid-cols-2 gap-2">
@@ -337,7 +348,7 @@ function Resultado({ resultado }: { resultado: ResultadoEscenario }) {
         <Metrica
           etiqueta="BEP (uds)"
           valor={resultado.puntoEquilibrio ? `${formatearCantidad(resultado.puntoEquilibrio)} uds` : "—"}
-          pct={variaciones.equilibrioPct}
+          pct={equilibrioPct}
           subirEsBueno={false}
         />
         <Metrica etiqueta="Ganancia mensual" valor={formatearMonto(resultado.gananciaMensual)} pct={variaciones.gananciaPct} subirEsBueno />

@@ -60,3 +60,22 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
 }
+
+/* «Guardar resumen»: al imprimir desde el simulador solo queda visible el resumen final. */
+@media print {
+  body.imprimiendo-resumen * {
+    visibility: hidden;
+  }
+  body.imprimiendo-resumen #resumen-final,
+  body.imprimiendo-resumen #resumen-final * {
+    visibility: visible;
+  }
+  body.imprimiendo-resumen #resumen-final {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    border: 0;
+    box-shadow: none;
+  }
+}
