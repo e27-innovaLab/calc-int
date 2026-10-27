@@ -6,6 +6,7 @@ import {
   MAX_ESCENARIOS,
   PRECIO_INICIAL,
   TRABAJO_PROPIO_INICIAL,
+  type BaseInsumo,
   type CategoriaCosto,
   type Calculo,
   type Configuracion,
@@ -30,6 +31,8 @@ export interface CambiosConcepto {
   nombre?: string;
   monto?: string;
   montoUnitario?: string;
+  /** Solo para los variables: si el monto es por unidad o por lote. */
+  base?: BaseInsumo;
 }
 
 /**
@@ -117,6 +120,10 @@ export function datosQueSePierdenAlCambiarRuta(calculo: Calculo, ruta: RutaProdu
       perdidos.push("las unidades por mes");
     }
   }
+  // Un monto cargado «por lote» no significa nada fuera de la ruta «lotes»: se vacía, no se reinterpreta como «por unidad».
+  if (actual === "lotes" && calculo.costosVariables.some((c) => c.base === "lote" && !estaVacio(c.montoUnitario))) {
+    perdidos.push("los insumos cargados por lote");
+  }
   if (!estaVacio(calculo.trabajoPropio.horasPorLote)) {
     perdidos.push("las horas de trabajo");
   }
@@ -128,6 +135,8 @@ export function datosQueSePierdenAlCambiarRuta(calculo: Calculo, ruta: RutaProdu
  * - De «lotes» a otra ruta (o al revés) se vacía el volumen: significa otra cosa y no hay que arrastrarlo.
  * - Entre «unidad» y «reventa» se conserva el volumen, porque las dos lo cargan por mes directamente.
  * - Las horas siempre se vacían (por lote, por unidad…) y el valor por hora y el sueldo mensual se conservan.
+ * - Al salir de «lotes», los insumos cargados por lote se vacían y vuelven a «por unidad»: sin lotes ese monto no
+ *   se puede dividir y tampoco debe pasar a contarse como si fuera por unidad.
  * Las rutas que no usan lotes quedan con 1 unidad por lote y el volumen total en «lotes» (regla del 1 de Data).
  */
 export function cambiarRuta(calculo: Calculo, ruta: RutaProduccion, ahora: string): Calculo {
@@ -147,7 +156,11 @@ export function cambiarRuta(calculo: Calculo, ruta: RutaProduccion, ahora: strin
   const trabajoPropio: TrabajoPropio = { ...calculo.trabajoPropio, horasPorLote: "" };
   trabajoPropio.incluir = trabajoIncluido(ruta, trabajoPropio);
 
-  return tocar(sincronizarLotes({ ...calculo, configuracion, trabajoPropio }), ahora);
+  const costosVariables = calculo.costosVariables.map((c) =>
+    actual === "lotes" && c.base === "lote" ? { ...c, base: "unidad" as const, montoUnitario: "" } : c,
+  );
+
+  return tocar(sincronizarLotes({ ...calculo, configuracion, trabajoPropio, costosVariables }), ahora);
 }
 
 export function actualizarTrabajoPropio(
@@ -236,6 +249,7 @@ export function actualizarConcepto(
                   ...c,
                   nombre: cambios.nombre ?? c.nombre,
                   montoUnitario: cambios.montoUnitario ?? c.montoUnitario,
+                  ...(cambios.base ? { base: cambios.base } : {}),
                 }
               : c,
           ),

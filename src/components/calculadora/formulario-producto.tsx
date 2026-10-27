@@ -320,7 +320,7 @@ function Formulario() {
         titulo="¿Cambiar la forma de producir?"
         descripcion={
           rutaPendiente
-            ? `Al pasar a «${OPCIONES_RUTA[rutaPendiente].titulo}» se borra lo que cargaste de ${unirEnLista(datosAPerder)}, porque significa otra cosa en esa ruta. Tus costos fijos, variables e indirectos se conservan.`
+            ? `Al pasar a «${OPCIONES_RUTA[rutaPendiente].titulo}» se borra lo que cargaste de ${unirEnLista(datosAPerder)}, porque significa otra cosa en esa ruta. El resto de tus costos se conserva.`
             : ""
         }
         etiquetaConfirmar="Sí, cambiar"

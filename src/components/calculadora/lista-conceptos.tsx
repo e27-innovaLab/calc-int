@@ -11,6 +11,10 @@ export interface FilaConcepto {
   nombre: string;
   /** Importe ya normalizado. */
   valor: string;
+  /** Solo si la lista deja elegir la base del monto (insumos de la ruta «lotes»). */
+  base?: "unidad" | "lote";
+  /** Texto con lo que equivale por unidad cuando el monto es por lote. Ej.: «= $1.000 por unidad». */
+  equivalente?: string;
 }
 
 interface PropsListaConceptos {
@@ -25,6 +29,8 @@ interface PropsListaConceptos {
   /** Conceptos frecuentes que se agregan con un clic. */
   sugeridos?: string[];
   onCambiar: (id: string, cambios: { nombre?: string; valor?: string }) => void;
+  /** Si se pasa, cada fila ofrece elegir si el monto es por unidad o por lote. */
+  onCambiarBase?: (id: string, base: "unidad" | "lote") => void;
   onEliminar: (id: string) => void;
   onAgregar: (nombre?: string) => void;
   /** Mensaje de error de una fila (ya filtrado por «mostrar solo si tocó el campo o intentó continuar»). */
@@ -42,6 +48,7 @@ export function ListaConceptos({
   etiquetaAgregar,
   sugeridos = [],
   onCambiar,
+  onCambiarBase,
   onEliminar,
   onAgregar,
   errorDe,
@@ -121,6 +128,21 @@ export function ListaConceptos({
                   </svg>
                 </button>
               </div>
+              {onCambiarBase ? (
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-gray-700">
+                  <label htmlFor={`${idBase}-${fila.id}-base`}>El monto es</label>
+                  <select
+                    id={`${idBase}-${fila.id}-base`}
+                    value={fila.base ?? "unidad"}
+                    onChange={(e) => onCambiarBase(fila.id, e.target.value === "lote" ? "lote" : "unidad")}
+                    className="min-h-10 rounded-lg border border-gray-400 bg-white px-2 text-sm text-gray-900 focus-visible:outline-2 focus-visible:outline-primary-600"
+                  >
+                    <option value="unidad">por unidad</option>
+                    <option value="lote">por lote completo</option>
+                  </select>
+                  {fila.equivalente ? <span className="text-gray-600">{fila.equivalente}</span> : null}
+                </div>
+              ) : null}
               {errorNombre || errorValor ? (
                 <p id={idErrores} role="alert" className="flex items-start gap-1.5 text-sm font-medium text-danger-700">
                   <span aria-hidden="true">✕</span>
