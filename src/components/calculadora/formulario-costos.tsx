@@ -14,7 +14,33 @@ import type { CategoriaCosto } from "@/domain/types";
 import { hayErrores, validarConfiguracion, validarCostos } from "@/domain/validaciones";
 import { useHidratado } from "@/hooks/use-hidratado";
 import { formatearCantidad, formatearMonto } from "@/lib/formato";
+import type { RutaProduccion } from "@/domain/types";
 import { useCalculoStore } from "@/store/calculo-store";
+
+/** Textos del trabajo propio según la ruta del paso 1 (en «unidad» y «reventa» las horas son por unidad / por venta). */
+const TEXTOS_TRABAJO: Record<
+  RutaProduccion,
+  { pregunta: string; multiplicador: string; consejo: string; consejoFinal: string }
+> = {
+  lotes: {
+    pregunta: "¿Cuántas horas le dedicás a cada lote?",
+    multiplicador: "lotes",
+    consejo: "por lote",
+    consejoFinal: "por lote",
+  },
+  unidad: {
+    pregunta: "¿Cuántas horas le dedicás a cada unidad?",
+    multiplicador: "unidades",
+    consejo: "por unidad",
+    consejoFinal: "por unidad",
+  },
+  reventa: {
+    pregunta: "¿Cuánto tiempo le dedicás a cada venta (en horas)?",
+    multiplicador: "ventas",
+    consejo: "por venta",
+    consejoFinal: "por venta",
+  },
+};
 
 import { ListaConceptos, type FilaConcepto } from "./lista-conceptos";
 
@@ -78,6 +104,7 @@ function Formulario() {
   const agregarConcepto = useCalculoStore((s) => s.agregarConcepto);
   const eliminarConcepto = useCalculoStore((s) => s.eliminarConcepto);
   const actualizarTrabajoPropio = useCalculoStore((s) => s.actualizarTrabajoPropio);
+  const textosTrabajo = TEXTOS_TRABAJO[calculo.configuracion.ruta];
   const cambiarPaso = useCalculoStore((s) => s.cambiarPaso);
 
   const [pestana, setPestana] = useState<Pestana>("fijos");
@@ -232,7 +259,7 @@ function Formulario() {
             <div className="flex flex-col gap-5">
               <Campo
                 idControl="horas-por-lote"
-                etiqueta="¿Cuántas horas le dedicás a cada lote?"
+                etiqueta={textosTrabajo.pregunta}
                 error={mensajeDe("trabajoPropio.horasPorLote")}
                 idError="horas-por-lote-error"
               >
@@ -289,7 +316,7 @@ function Formulario() {
               {tieneTrabajo ? (
                 <p className="rounded-xl bg-primary-50 px-4 py-3 text-sm text-primary-700" aria-live="polite">
                   {formatearCantidad(trabajoPropio.horasPorLote)} hs × {formatearMonto(trabajoPropio.valorHora)}/h ×{" "}
-                  {formatearCantidad(calculo.configuracion.lotes)} lotes ={" "}
+                  {formatearCantidad(calculo.configuracion.lotes)} {textosTrabajo.multiplicador} ={" "}
                   <strong>{formatearMonto(resumen.totalTrabajoPropioMensual)} / mes</strong>
                 </p>
               ) : null}
@@ -340,8 +367,8 @@ function Formulario() {
           </div>
 
           <Aviso tono="consejo">
-            El error más frecuente es no incluir el trabajo propio. Si hacés 4 hs por lote y querés ganar $1.500/hs, eso
-            son $6.000 de costo fijo por lote.
+            El error más frecuente es no incluir el trabajo propio. Si hacés 4 hs {textosTrabajo.consejo} y querés ganar
+            $1.500/hs, eso son $6.000 de costo fijo {textosTrabajo.consejoFinal}.
           </Aviso>
           {advertenciaDe("costosFijos") ? <Aviso tono="advertencia">{advertenciaDe("costosFijos")}</Aviso> : null}
         </div>

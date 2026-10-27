@@ -12,6 +12,7 @@ import {
   type EscenarioUsuario,
   type PasoRecorrido,
   type Precio,
+  type RutaProduccion,
   type TrabajoPropio,
 } from "@/domain/types";
 
@@ -82,6 +83,33 @@ export function actualizarConfiguracion(
     sincronizarLotes({ ...calculo, configuracion: { ...calculo.configuracion, ...cambios } }),
     ahora,
   );
+}
+
+/**
+ * Cambia la ruta de producción del paso 1.
+ * - De «lotes» a otra ruta (o al revés) se vacían el volumen y las horas: significan otra cosa y no hay que arrastrarlos.
+ * - Entre «unidad» y «reventa» se conservan, porque las dos cargan el volumen por mes directamente.
+ * Las rutas que no usan lotes quedan con 1 unidad por lote y el volumen total en «lotes» (regla del 1 de Data).
+ */
+export function cambiarRuta(calculo: Calculo, ruta: RutaProduccion, ahora: string): Calculo {
+  const actual = calculo.configuracion.ruta;
+  if (actual === ruta) return calculo;
+
+  const directaAntes = actual !== "lotes";
+  const directaAhora = ruta !== "lotes";
+  const conservar = directaAntes && directaAhora;
+
+  const configuracion: Configuracion = {
+    ...calculo.configuracion,
+    ruta,
+    unidadesPorLote: directaAhora ? "1" : "",
+    lotes: directaAhora ? (conservar ? calculo.configuracion.lotes : "") : "1",
+  };
+  const trabajoPropio: TrabajoPropio = conservar
+    ? calculo.trabajoPropio
+    : { ...calculo.trabajoPropio, horasPorLote: "", incluir: !estaVacio(calculo.trabajoPropio.valorHora) };
+
+  return tocar(sincronizarLotes({ ...calculo, configuracion, trabajoPropio }), ahora);
 }
 
 export function actualizarTrabajoPropio(

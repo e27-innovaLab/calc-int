@@ -21,6 +21,19 @@ export type Id = string;
 
 export type TipoOferta = "producto" | "servicio";
 
+/**
+ * Cómo produce o consigue lo que vende el usuario (primer paso del recorrido, «¿Cómo producís?»).
+ * - `lotes`: produce en tandas (pastelería, velas). Unidades por lote × lotes por mes.
+ * - `unidad`: arma cada producto a medida. Carga el volumen por mes y las horas por unidad.
+ * - `reventa`: compra productos terminados. Carga las ventas por mes y el tiempo que le lleva cada venta.
+ *
+ * Las rutas `unidad` y `reventa` siguen la «regla del 1» de Data: 1 unidad por lote y, en «lotes», el volumen total.
+ * Así el motor es el mismo para las tres y solo cambia lo que se le pregunta al usuario.
+ */
+export type RutaProduccion = "lotes" | "unidad" | "reventa";
+
+export const RUTAS_PRODUCCION: RutaProduccion[] = ["lotes", "unidad", "reventa"];
+
 /** El MVP trabaja solo en pesos argentinos. */
 export type Moneda = "ARS";
 
@@ -32,6 +45,8 @@ export type Frecuencia = "semanal" | "mensual" | "anual";
 
 export interface Configuracion {
   tipo: TipoOferta;
+  /** Ruta elegida en el paso 1. Cambia las preguntas de volumen y de tiempo, no las fórmulas. */
+  ruta: RutaProduccion;
   /** Nombre del producto o servicio. Ej: "Torta de chocolate". */
   nombre: string;
   moneda: Moneda;
@@ -103,7 +118,7 @@ export type CategoriaCosto = ConceptoCosto["categoria"];
 export interface TrabajoPropio {
   /** Si el usuario decide incluir el valor de su tiempo en el costo. */
   incluir: boolean;
-  /** Horas que le dedica a cada lote. */
+  /** Horas que le dedica a cada lote (ruta «lotes»), a cada unidad (ruta «unidad») o a cada venta (ruta «reventa»). */
   horasPorLote: DecimalString;
   /**
    * Horas trabajadas por mes = `horasPorLote × lotes`.
@@ -220,6 +235,7 @@ export interface ErrorValidacion {
 
 export const CONFIGURACION_INICIAL: Configuracion = {
   tipo: "producto",
+  ruta: "lotes",
   nombre: "",
   moneda: "ARS",
   unidadVenta: "unidad",

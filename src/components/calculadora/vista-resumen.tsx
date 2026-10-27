@@ -45,7 +45,7 @@ function Resumen() {
   const composicion = useMemo(() => composicionCostoUnitario(calculo), [calculo]);
   const detalle = useMemo(() => detalleDeCostos(calculo), [calculo]);
 
-  const { nombre, unidadesPorLote, lotes, unidadVenta } = calculo.configuracion;
+  const { nombre, unidadesPorLote, lotes, unidadVenta, ruta } = calculo.configuracion;
   const producto = nombre.trim();
   const unidades = unidadVenta === "unidad" ? "unidades" : unidadVenta;
   const hayDatos = resumen.costoUnitario !== null && (resumen.tieneCostosFijos || resumen.tieneCostosVariables);
@@ -93,9 +93,15 @@ function Resumen() {
             cuenta={`${formatearMonto(resumen.costoFijoTotalMensual)} ÷ ${formatearCantidad(resumen.volumenMensual)} + ${formatearMonto(resumen.costoVariableUnitario)} = ${formatearMonto(costoUnitario)}`}
           />
         </div>
-        <TarjetaDato titulo="Costo total por lote" valor={formatearMonto(porLote)}>
-          {formatearCantidad(unidadesPorLote)} uds × {formatearCantidad(lotes)} lotes
-        </TarjetaDato>
+        {ruta === "lotes" ? (
+          <TarjetaDato titulo="Costo total por lote" valor={formatearMonto(porLote)}>
+            {formatearCantidad(unidadesPorLote)} uds × {formatearCantidad(lotes)} lotes
+          </TarjetaDato>
+        ) : (
+          <TarjetaDato titulo="Costos fijos por mes" valor={formatearMonto(resumen.costoFijoTotalMensual)}>
+            repartidos entre {formatearCantidad(resumen.volumenMensual)} {unidades}
+          </TarjetaDato>
+        )}
         <TarjetaDato titulo="Costo total mensual" valor={formatearMonto(resumen.costoTotalMensual)}>
           {formatearCantidad(resumen.volumenMensual)} {unidades}/mes
         </TarjetaDato>
@@ -152,7 +158,7 @@ function Resumen() {
               <div className="mt-2 flex items-baseline justify-between gap-3 text-sm text-gray-700">
                 <span>
                   {formatearCantidad(detalle.trabajoPropio.horasPorLote)} hs × {formatearMonto(detalle.trabajoPropio.valorHora)}/h ×{" "}
-                  {formatearCantidad(detalle.trabajoPropio.lotes)} lotes
+                  {formatearCantidad(detalle.trabajoPropio.lotes)} {ruta === "lotes" ? "lotes" : ruta === "reventa" ? "ventas" : "unidades"}
                 </span>
                 <span className="font-medium text-gray-900">{formatearMonto(detalle.trabajoPropio.totalMensual)}</span>
               </div>
