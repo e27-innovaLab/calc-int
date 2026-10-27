@@ -17,7 +17,7 @@ import { datosQueSePierdenAlCambiarRuta } from "@/domain/calculo";
 import type { RutaProduccion } from "@/domain/types";
 import { crearConfiguracionSchema, type ConfiguracionFormulario } from "@/domain/validaciones";
 import { useHidratado } from "@/hooks/use-hidratado";
-import { formatearCantidad } from "@/lib/formato";
+import { formatearCantidad, unirEnLista } from "@/lib/formato";
 import { useCalculoStore } from "@/store/calculo-store";
 
 const UNIDADES_DE_VENTA = [
@@ -320,7 +320,7 @@ function Formulario() {
         titulo="¿Cambiar la forma de producir?"
         descripcion={
           rutaPendiente
-            ? `Al pasar a «${OPCIONES_RUTA[rutaPendiente].titulo}» se borra lo que cargaste de ${datosAPerder.join(", ")}, porque significa otra cosa en esa ruta. Tus costos fijos, variables e indirectos se conservan.`
+            ? `Al pasar a «${OPCIONES_RUTA[rutaPendiente].titulo}» se borra lo que cargaste de ${unirEnLista(datosAPerder)}, porque significa otra cosa en esa ruta. Tus costos fijos, variables e indirectos se conservan.`
             : ""
         }
         etiquetaConfirmar="Sí, cambiar"

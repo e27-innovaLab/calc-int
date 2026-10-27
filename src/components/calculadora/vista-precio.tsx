@@ -136,7 +136,7 @@ function Precio() {
                 value={margen}
                 aria-valuetext={`${margen} por ciento`}
                 onChange={(e) => actualizarPrecio({ margenPct: e.target.value })}
-                className="h-2 w-full cursor-pointer accent-primary-600"
+                className="h-6 w-full cursor-pointer accent-primary-600"
               />
               <div className="relative mt-1 h-5 text-xs text-gray-500">
                 <span className="absolute left-0">0%</span>

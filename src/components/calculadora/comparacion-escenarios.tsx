@@ -83,7 +83,12 @@ export function ComparacionEscenarios({ base, escenarios }: Props) {
         <p className="mt-1 text-sm text-gray-500">Desplazá la tabla para revisar todos los escenarios.</p>
       </div>
 
-      <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-sm" tabIndex={0} aria-label="Tabla de comparación, desplazable">
+      <div
+        className="overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-sm"
+        role="region"
+        tabIndex={0}
+        aria-label="Tabla de comparación, desplazable"
+      >
         <table className="w-full min-w-max border-collapse text-left">
           <caption className="sr-only">
             Comparación de cada escenario con tu situación actual: costo unitario, precio de venta, margen neto, punto de

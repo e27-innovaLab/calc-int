@@ -6,7 +6,25 @@ import {
   formatearDiferenciaPuntos,
   formatearDiferenciaUnidades,
   formatearMonto,
+  unirEnLista,
 } from "./formato";
+
+describe("unirEnLista", () => {
+  it("un solo elemento queda tal cual y una lista vacía queda vacía", () => {
+    expect(unirEnLista(["las horas de trabajo"])).toBe("las horas de trabajo");
+    expect(unirEnLista([])).toBe("");
+  });
+
+  it("dos elementos van unidos con «y»", () => {
+    expect(unirEnLista(["las unidades por lote", "las horas de trabajo"])).toBe("las unidades por lote y las horas de trabajo");
+  });
+
+  it("tres o más van separados por comas y el último con «y»", () => {
+    expect(unirEnLista(["las unidades por lote", "los lotes por mes", "las horas de trabajo"])).toBe(
+      "las unidades por lote, los lotes por mes y las horas de trabajo",
+    );
+  });
+});
 
 describe("formatearMonto", () => {
   it("enteros con punto de miles, sin decimales", () => {

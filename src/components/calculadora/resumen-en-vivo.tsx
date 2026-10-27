@@ -67,7 +67,7 @@ export function ResumenEnVivo() {
               type="button"
               aria-expanded={desglose}
               onClick={() => setDesglose((v) => !v)}
-              className="text-sm font-medium text-primary-700 underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-primary-600"
+              className="relative text-sm font-medium text-primary-700 underline-offset-2 before:absolute before:inset-x-0 before:-inset-y-3 before:content-[''] hover:underline focus-visible:outline-2 focus-visible:outline-primary-600"
             >
               {desglose ? "ocultar desglose ▲" : "ver desglose ▼"}
             </button>

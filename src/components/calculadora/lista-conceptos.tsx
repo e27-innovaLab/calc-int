@@ -62,7 +62,7 @@ export function ListaConceptos({
               key={s}
               type="button"
               onClick={() => onAgregar(s)}
-              className="rounded-full border border-primary-100 bg-primary-50 px-3 py-1 text-sm font-medium text-primary-700 hover:bg-primary-100 focus-visible:outline-2 focus-visible:outline-primary-600"
+              className="relative rounded-full border border-primary-100 bg-primary-50 px-3 py-1 text-sm before:absolute before:inset-x-0 before:-inset-y-2 before:content-[''] font-medium text-primary-700 hover:bg-primary-100 focus-visible:outline-2 focus-visible:outline-primary-600"
             >
               + {s}
             </button>
@@ -136,7 +136,7 @@ export function ListaConceptos({
         <button
           type="button"
           onClick={() => onAgregar()}
-          className="text-sm font-semibold text-primary-700 underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-primary-600"
+          className="relative text-sm font-semibold text-primary-700 underline-offset-2 before:absolute before:inset-x-0 before:-inset-y-3 before:content-[''] hover:underline focus-visible:outline-2 focus-visible:outline-primary-600"
         >
           + {etiquetaAgregar}
         </button>

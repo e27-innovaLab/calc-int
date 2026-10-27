@@ -309,7 +309,12 @@ function TablaDatos({
         <span className="group-open:hidden">Ver datos</span>
         <span className="hidden group-open:inline">Ocultar datos</span>
       </summary>
-      <div className="mt-3 overflow-x-auto rounded-xl border border-gray-200">
+      <div
+        className="mt-3 overflow-x-auto rounded-xl border border-gray-200"
+        role="region"
+        tabIndex={0}
+        aria-label="Tabla de datos del gráfico, desplazable"
+      >
         <table className="w-full text-left text-sm">
           <caption className="sr-only">Ingresos, costos y diferencia según las unidades vendidas por mes</caption>
           <thead className="bg-gray-50 text-gray-700">
