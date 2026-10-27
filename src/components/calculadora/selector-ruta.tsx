@@ -25,8 +25,8 @@ const trazo = {
 /** Textos del diseño (Figma, «¿Cómo producís?»). */
 export const OPCIONES_RUTA: Record<RutaProduccion, OpcionRuta> = {
   lotes: {
-    titulo: "Por lotes/tandas",
-    descripcion: "Producís en cantidad durante un mismo proceso u horneada. Por ejemplo: pastelería, velas, cerámica o impresión 3D.",
+    titulo: "Fabrico por lotes / tandas",
+    descripcion: "Elegí esta opción si producís varias unidades durante un mismo proceso u horneada. Por ejemplo: pastelería, velas, cerámica o impresión 3D.",
     icono: (
       <svg {...trazo}>
         <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
@@ -35,8 +35,8 @@ export const OPCIONES_RUTA: Record<RutaProduccion, OpcionRuta> = {
     ),
   },
   unidad: {
-    titulo: "Por unidad a medida",
-    descripcion: "Diseñás, armás o construís cada producto de forma individual y exclusiva. Por ejemplo: carpintería a medida, joyería fina o alta costura.",
+    titulo: "Fabrico por unidad (a medida)",
+    descripcion: "Elegí esta opción si diseñás, armás o construís cada producto de forma individual y exclusiva. Por ejemplo: carpintería a medida, joyería fina o alta costura.",
     icono: (
       <svg {...trazo}>
         <path d="m3 17 6-6 4 4 8-8" />
@@ -46,7 +46,7 @@ export const OPCIONES_RUTA: Record<RutaProduccion, OpcionRuta> = {
   },
   reventa: {
     titulo: "Compro y revendo",
-    descripcion: "Comprás productos ya terminados para comercializarlos, sin fabricarlos. Por ejemplo: bazar, tecnología o indumentaria mayorista.",
+    descripcion: "Elegí esta opción si no fabricás, sino que comprás productos terminados para comercializarlos. Por ejemplo: bazar, tecnología o indumentaria mayorista.",
     icono: (
       <svg {...trazo}>
         <path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z" />

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useId, useRef } from "react";
 
 import { Boton } from "./boton";
 
@@ -10,13 +10,15 @@ interface PropsDialogoConfirmar {
   descripcion: string;
   etiquetaConfirmar: string;
   etiquetaCancelar?: string;
+  /** «peligro» (rojo) para acciones que borran datos; «primario» para confirmar algo que no se pierde. */
+  varianteConfirmar?: "peligro" | "primario";
   onConfirmar: () => void;
   onCancelar: () => void;
 }
 
 /**
- * Confirmación modal para acciones que borran datos. Usa <dialog> nativo: atrapa el foco,
- * se cierra con Esc y devuelve el foco al elemento que lo abrió. El foco inicial queda en «Cancelar».
+ * Confirmación modal. Usa <dialog> nativo: atrapa el foco, se cierra con Esc y devuelve el foco al elemento que
+ * lo abrió. El foco inicial queda en «Cancelar». Los `id` son propios de cada diálogo: una pantalla puede tener varios.
  */
 export function DialogoConfirmar({
   abierto,
@@ -24,10 +26,14 @@ export function DialogoConfirmar({
   descripcion,
   etiquetaConfirmar,
   etiquetaCancelar = "Cancelar",
+  varianteConfirmar = "peligro",
   onConfirmar,
   onCancelar,
 }: PropsDialogoConfirmar) {
   const ref = useRef<HTMLDialogElement>(null);
+  const idBase = useId();
+  const idTitulo = `${idBase}-titulo`;
+  const idDescripcion = `${idBase}-descripcion`;
 
   useEffect(() => {
     const dialogo = ref.current;
@@ -39,8 +45,8 @@ export function DialogoConfirmar({
   return (
     <dialog
       ref={ref}
-      aria-labelledby="dialogo-titulo"
-      aria-describedby="dialogo-descripcion"
+      aria-labelledby={idTitulo}
+      aria-describedby={idDescripcion}
       onCancel={(e) => {
         e.preventDefault();
         onCancelar();
@@ -50,17 +56,17 @@ export function DialogoConfirmar({
       }}
       className="m-auto w-[calc(100%-2rem)] max-w-md rounded-2xl border border-gray-200 bg-white p-6 text-gray-900 shadow-xl backdrop:bg-gray-900/40"
     >
-      <h2 id="dialogo-titulo" className="text-lg font-bold">
+      <h2 id={idTitulo} className="text-lg font-bold">
         {titulo}
       </h2>
-      <p id="dialogo-descripcion" className="mt-2 text-sm text-gray-700">
+      <p id={idDescripcion} className="mt-2 text-sm text-gray-700">
         {descripcion}
       </p>
       <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
         <Boton variante="secundario" autoFocus onClick={onCancelar}>
           {etiquetaCancelar}
         </Boton>
-        <Boton variante="peligro" onClick={onConfirmar}>
+        <Boton variante={varianteConfirmar} onClick={onConfirmar}>
           {etiquetaConfirmar}
         </Boton>
       </div>

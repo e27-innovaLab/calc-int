@@ -14,6 +14,7 @@ import type { CategoriaCosto } from "@/domain/types";
 import { hayErrores, validarConfiguracion, validarCostos } from "@/domain/validaciones";
 import { useHidratado } from "@/hooks/use-hidratado";
 import { formatearCantidad, formatearMonto } from "@/lib/formato";
+import { indiceDePestana } from "@/lib/navegacion-teclado";
 import type { RutaProduccion } from "@/domain/types";
 import { useCalculoStore } from "@/store/calculo-store";
 
@@ -213,7 +214,7 @@ function Formulario() {
             ["fijos", "Costos Fijos", ICONO_FIJOS],
             ["variables", "Costos Variables", ICONO_VARIABLES],
           ] as const
-        ).map(([id, etiqueta, icono]) => (
+        ).map(([id, etiqueta, icono], indice, todas) => (
           <button
             key={id}
             type="button"
@@ -221,7 +222,15 @@ function Formulario() {
             id={`pestana-${id}`}
             aria-selected={pestana === id}
             aria-controls={`panel-${id}`}
+            tabIndex={pestana === id ? 0 : -1}
             onClick={() => setPestana(id)}
+            onKeyDown={(e) => {
+              const destino = indiceDePestana(e.key, indice, todas.length);
+              if (destino === null) return;
+              e.preventDefault();
+              setPestana(todas[destino][0]);
+              document.getElementById(`pestana-${todas[destino][0]}`)?.focus();
+            }}
             className={`inline-flex items-center justify-center gap-2 rounded-lg px-4 py-3 text-base font-semibold focus-visible:outline-2 focus-visible:outline-primary-600 ${
               pestana === id ? "bg-white text-primary-700 shadow-sm" : "text-gray-700 hover:text-gray-900"
             }`}
