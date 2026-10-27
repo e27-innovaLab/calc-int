@@ -96,6 +96,34 @@ export function actualizarConfiguracion(
 }
 
 /**
+ * Qué datos ya cargados se borrarían al pasar a otra ruta (los mismos que vacía `cambiarRuta`), en palabras del usuario.
+ * Lista vacía = no se pierde nada y se puede cambiar sin avisar. Los costos y el valor por hora no se tocan.
+ */
+export function datosQueSePierdenAlCambiarRuta(calculo: Calculo, ruta: RutaProduccion): string[] {
+  const actual = calculo.configuracion.ruta;
+  if (actual === ruta) return [];
+
+  const { unidadesPorLote, lotes } = calculo.configuracion;
+  const perdidos: string[] = [];
+
+  const directaAntes = actual !== "lotes";
+  const directaAhora = ruta !== "lotes";
+  if (directaAntes !== directaAhora) {
+    if (actual === "lotes") {
+      // «1» lote es el valor con el que arranca el formulario: no cuenta como dato cargado.
+      if (!estaVacio(unidadesPorLote)) perdidos.push("las unidades por lote");
+      if (!estaVacio(lotes) && lotes.trim() !== "1") perdidos.push("los lotes por mes");
+    } else if (!estaVacio(lotes)) {
+      perdidos.push("las unidades por mes");
+    }
+  }
+  if (!estaVacio(calculo.trabajoPropio.horasPorLote)) {
+    perdidos.push("las horas de trabajo");
+  }
+  return perdidos;
+}
+
+/**
  * Cambia la ruta de producción del paso 1.
  * - De «lotes» a otra ruta (o al revés) se vacía el volumen: significa otra cosa y no hay que arrastrarlo.
  * - Entre «unidad» y «reventa» se conserva el volumen, porque las dos lo cargan por mes directamente.

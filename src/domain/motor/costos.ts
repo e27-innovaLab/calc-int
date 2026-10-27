@@ -25,7 +25,11 @@ import { aMensual } from "./periodo";
 
 const CERO = new Decimal(0);
 
-/** Importe válido (número, no negativo). Lo demás cuenta como cero: lo informa la validación. */
+/**
+ * Importe válido (número, no negativo). Lo demás cuenta como cero SOLO para mostrar subtotales parciales:
+ * `calcularResumenCostos` avisa con `tieneImportesInvalidos` y no entrega costo unitario, así un dato
+ * inválido nunca cambia el resultado sin que el usuario lo sepa.
+ */
 export function importeValido(valor: DecimalString): Decimal {
   const d = leerNumero(valor);
   return d && !d.isNegative() ? d : CERO;
@@ -34,6 +38,36 @@ export function importeValido(valor: DecimalString): Decimal {
 /** Monto de un concepto por período, normalizado a mensual. */
 export function montoMensual(monto: DecimalString, frecuencia: Frecuencia): Decimal {
   return aMensual(importeValido(monto), frecuencia);
+}
+
+/** Un importe cargado que no sirve: no es un número o es negativo. Vacío no cuenta (todavía no lo cargó). */
+function importeInvalido(valor: DecimalString): boolean {
+  if (valor.trim() === "") return false;
+  const d = leerNumero(valor);
+  return !d || d.isNegative();
+}
+
+type EntradaImportes = Pick<
+  Calculo,
+  "configuracion" | "costosFijos" | "costosVariables" | "costosIndirectos" | "trabajoPropio"
+>;
+
+/**
+ * Hay algún importe cargado que no es un número o es negativo. Mira solo los datos que usa la ruta elegida:
+ * el sueldo en «reventa»; las horas y el valor por hora en las otras dos.
+ */
+export function hayImportesInvalidos(calculo: EntradaImportes): boolean {
+  const { trabajoPropio, configuracion } = calculo;
+  const delTrabajo =
+    configuracion.ruta === "reventa"
+      ? [trabajoPropio.sueldoMensual]
+      : [trabajoPropio.horasPorLote, trabajoPropio.valorHora];
+  return [
+    ...calculo.costosFijos.map((c) => c.monto),
+    ...calculo.costosIndirectos.map((c) => c.monto),
+    ...calculo.costosVariables.map((c) => c.montoUnitario),
+    ...delTrabajo,
+  ].some(importeInvalido);
 }
 
 function sumarPorPeriodo(conceptos: Extract<ConceptoCosto, { frecuencia: Frecuencia }>[]): Decimal {
@@ -79,6 +113,8 @@ export interface ResumenCostos {
   tieneCostosFijos: boolean;
   /** Hay algún insumo variable cargado (> 0). */
   tieneCostosVariables: boolean;
+  /** Algún importe cargado no es un número o es negativo: no se calcula el costo unitario hasta corregirlo. */
+  tieneImportesInvalidos: boolean;
 }
 
 type EntradaResumen = Pick<
@@ -111,7 +147,8 @@ export function calcularResumenCostos(calculo: EntradaResumen): ResumenCostos {
   const volumen = leerNumero(calculo.configuracion.volumenMensual);
   const volumenValido = volumen && volumen.isPositive() && !volumen.isZero() ? volumen : null;
 
-  const costoTotal = volumenValido ? costoFijoTotal.plus(cvu.times(volumenValido)) : null;
+  const importesInvalidos = hayImportesInvalidos(calculo);
+  const costoTotal = volumenValido && !importesInvalidos ? costoFijoTotal.plus(cvu.times(volumenValido)) : null;
   const costoUnitario = costoTotal && volumenValido ? costoTotal.dividedBy(volumenValido) : null;
 
   return {
@@ -125,5 +162,6 @@ export function calcularResumenCostos(calculo: EntradaResumen): ResumenCostos {
     costoUnitario: costoUnitario ? aDecimalString(costoUnitario) : null,
     tieneCostosFijos: costoFijoTotal.greaterThan(0),
     tieneCostosVariables: cvu.greaterThan(0),
+    tieneImportesInvalidos: importesInvalidos,
   };
 }

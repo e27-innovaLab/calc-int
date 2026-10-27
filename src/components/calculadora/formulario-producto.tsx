@@ -2,15 +2,18 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 
 import { Ayuda } from "@/components/ui/ayuda";
 import { Aviso } from "@/components/ui/aviso";
 import { Boton } from "@/components/ui/boton";
 import { Campo, clasesCampo } from "@/components/ui/campo";
+import { DialogoConfirmar } from "@/components/ui/dialogo-confirmar";
 import { CampoMonto } from "@/components/ui/campo-monto";
 import { Tarjeta } from "@/components/ui/tarjeta";
-import { SelectorRuta } from "@/components/calculadora/selector-ruta";
+import { OPCIONES_RUTA, SelectorRuta } from "@/components/calculadora/selector-ruta";
+import { datosQueSePierdenAlCambiarRuta } from "@/domain/calculo";
 import type { RutaProduccion } from "@/domain/types";
 import { crearConfiguracionSchema, type ConfiguracionFormulario } from "@/domain/validaciones";
 import { useHidratado } from "@/hooks/use-hidratado";
@@ -85,6 +88,7 @@ function Formulario() {
   const cambiarRuta = useCalculoStore((s) => s.cambiarRuta);
   const cambiarPaso = useCalculoStore((s) => s.cambiarPaso);
   const ruta = configuracion.ruta;
+  const [rutaPendiente, setRutaPendiente] = useState<RutaProduccion | null>(null);
 
   const {
     register,
@@ -106,13 +110,22 @@ function Formulario() {
   const volumenListo = configuracion.volumenMensual !== "";
   const unidades = UNIDADES_DE_VENTA.find((u) => u.valor === configuracion.unidadVenta)?.etiqueta ?? configuracion.unidadVenta;
 
-  /** Al cambiar de ruta el store recalcula los campos que no aplican; el formulario se vuelve a sincronizar con ellos. */
-  function elegirRuta(nueva: RutaProduccion) {
-    if (nueva === ruta) return;
+  /** Aplica el cambio: el store recalcula los campos que no aplican y el formulario se vuelve a sincronizar con ellos. */
+  function aplicarRuta(nueva: RutaProduccion) {
     cambiarRuta(nueva);
     const { nombre, unidadVenta, unidadesPorLote, lotes } = useCalculoStore.getState().calculo.configuracion;
     reset({ nombre, unidadVenta, unidadesPorLote, lotes });
   }
+
+  /** Si cambiar de ruta borra algo que el usuario ya cargó, se lo avisa antes y le deja volver atrás. */
+  function elegirRuta(nueva: RutaProduccion) {
+    if (nueva === ruta) return;
+    const perdidos = datosQueSePierdenAlCambiarRuta(useCalculoStore.getState().calculo, nueva);
+    if (perdidos.length > 0) setRutaPendiente(nueva);
+    else aplicarRuta(nueva);
+  }
+
+  const datosAPerder = rutaPendiente ? datosQueSePierdenAlCambiarRuta(useCalculoStore.getState().calculo, rutaPendiente) : [];
 
   const continuar = handleSubmit(() => {
     cambiarPaso("costos");
@@ -301,6 +314,22 @@ function Formulario() {
       <div className="flex justify-end">
         <Boton type="submit">Continuar →</Boton>
       </div>
+
+      <DialogoConfirmar
+        abierto={rutaPendiente !== null}
+        titulo="¿Cambiar la forma de producir?"
+        descripcion={
+          rutaPendiente
+            ? `Al pasar a «${OPCIONES_RUTA[rutaPendiente].titulo}» se borra lo que cargaste de ${datosAPerder.join(", ")}, porque significa otra cosa en esa ruta. Tus costos fijos, variables e indirectos se conservan.`
+            : ""
+        }
+        etiquetaConfirmar="Sí, cambiar"
+        onCancelar={() => setRutaPendiente(null)}
+        onConfirmar={() => {
+          if (rutaPendiente) aplicarRuta(rutaPendiente);
+          setRutaPendiente(null);
+        }}
+      />
     </form>
   );
 }

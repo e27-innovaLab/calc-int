@@ -8,16 +8,18 @@ import { useAnalisisPrecio } from "@/hooks/use-analisis-precio";
 import { formatearCantidad, formatearMonto } from "@/lib/formato";
 import { useCalculoStore } from "@/store/calculo-store";
 
-function Fila({ etiqueta, valor, nota }: { etiqueta: string; valor: string; nota?: string }) {
+/** Un dato del panel. Va dentro de un <dl>: el <div> que envuelve <dt> y <dd> es la forma válida de agruparlos. */
+function Fila({ etiqueta, valor }: { etiqueta: string; valor: string }) {
   return (
-    <div className="flex flex-col gap-0.5">
-      <div className="flex items-baseline justify-between gap-3">
-        <dt className="text-sm text-gray-700">{etiqueta}</dt>
-        <dd className="text-sm font-semibold text-gray-900">{valor}</dd>
-      </div>
-      {nota ? <p className="text-right text-xs text-gray-500">{nota}</p> : null}
+    <div className="flex items-baseline justify-between gap-3">
+      <dt className="text-sm text-gray-700">{etiqueta}</dt>
+      <dd className="text-sm font-semibold text-gray-900">{valor}</dd>
     </div>
   );
+}
+
+function Nota({ children }: { children: string }) {
+  return <p className="-mt-2 text-right text-xs text-gray-500">{children}</p>;
 }
 
 /** Panel lateral «Resumen en vivo»: se recalcula con cada dato que carga el usuario. */
@@ -35,12 +37,14 @@ export function ResumenEnVivo() {
   const unidades = unidadVenta === "unidad" ? "unidades" : unidadVenta;
 
   let notaCostoUnitario = "Completá tus costos para ver este dato.";
-  if (!resumen.volumenMensual) notaCostoUnitario = "Completá las unidades por mes en «Tu producto».";
+  if (resumen.tieneImportesInvalidos) notaCostoUnitario = "Hay un importe que no es válido: revisá los costos y tu tiempo.";
+  else if (!resumen.volumenMensual) notaCostoUnitario = "Completá las unidades por mes en «Tu producto».";
   else if (!resumen.tieneCostosFijos && !resumen.tieneCostosVariables) notaCostoUnitario = "Completá tus costos para ver este dato.";
   else if (!resumen.tieneCostosVariables) notaCostoUnitario = "Falta el costo variable por unidad.";
   else if (!resumen.tieneCostosFijos) notaCostoUnitario = "Falta cargar costos fijos o tu tiempo.";
 
-  const costoUnitarioListo = resumen.costoUnitario !== null && resumen.tieneCostosFijos && resumen.tieneCostosVariables;
+  const costoUnitarioListo =
+    !resumen.tieneImportesInvalidos && resumen.costoUnitario !== null && resumen.tieneCostosFijos && resumen.tieneCostosVariables;
 
   return (
     <aside aria-label="Resumen en vivo" className="rounded-2xl border border-accent-400/40 bg-primary-100 p-5 shadow-sm">
@@ -53,12 +57,10 @@ export function ResumenEnVivo() {
         </p>
       </div>
 
-      <dl className="mt-4 flex flex-col gap-3">
-        <Fila
-          etiqueta="Costo Fijo Total/mes"
-          valor={resumen.tieneCostosFijos ? formatearMonto(resumen.costoFijoTotalMensual) : "—"}
-          nota={resumen.tieneCostosFijos ? undefined : "Completá tus costos fijos"}
-        />
+      <div className="mt-4 flex flex-col gap-3">
+        <dl>
+          <Fila etiqueta="Costo Fijo Total/mes" valor={resumen.tieneCostosFijos ? formatearMonto(resumen.costoFijoTotalMensual) : "—"} />
+        </dl>
         {resumen.tieneCostosFijos ? (
           <div>
             <button
@@ -70,20 +72,21 @@ export function ResumenEnVivo() {
               {desglose ? "ocultar desglose ▲" : "ver desglose ▼"}
             </button>
             {desglose ? (
-              <div className="mt-2 flex flex-col gap-1.5 border-l-2 border-accent-400/50 pl-3">
+              <dl className="mt-2 flex flex-col gap-1.5 border-l-2 border-accent-400/50 pl-3">
                 <Fila etiqueta="Gastos fijos" valor={formatearMonto(resumen.totalGastosFijosMensual)} />
                 <Fila etiqueta="Tu tiempo" valor={formatearMonto(resumen.totalTrabajoPropioMensual)} />
                 <Fila etiqueta="Indirectos" valor={formatearMonto(resumen.totalIndirectosMensual)} />
-              </div>
+              </dl>
             ) : null}
           </div>
-        ) : null}
-        <Fila
-          etiqueta="Variables/unidad"
-          valor={resumen.tieneCostosVariables ? formatearMonto(resumen.costoVariableUnitario) : "—"}
-          nota={resumen.tieneCostosVariables ? undefined : "Completá costos variables"}
-        />
-      </dl>
+        ) : (
+          <Nota>Completá tus costos fijos</Nota>
+        )}
+        <dl>
+          <Fila etiqueta="Variables/unidad" valor={resumen.tieneCostosVariables ? formatearMonto(resumen.costoVariableUnitario) : "—"} />
+        </dl>
+        {resumen.tieneCostosVariables ? null : <Nota>Completá costos variables</Nota>}
+      </div>
 
       <div className="mt-4 border-t border-accent-400/50 pt-4" aria-live="polite">
         <p className="text-sm text-gray-700">Costo unitario real</p>
