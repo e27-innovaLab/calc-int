@@ -411,25 +411,37 @@ function Formulario() {
               ayuda={
                 <Ayuda
                   sobre="costos variables"
-                  texto="Son los gastos que cambian según cuánto produzcas: materiales, insumos, envases."
-                  ejemplo="la harina, la caja, la etiqueta. Todo lo que se usa por cada unidad que fabricás."
+                  texto={
+                    esReventa
+                      ? "Son los gastos que cambian según cuánto vendas: lo que pagás por cada producto y su packaging."
+                      : "Son los gastos que cambian según cuánto produzcas: materiales, insumos, envases."
+                  }
+                  ejemplo={
+                    esReventa
+                      ? "el precio de compra mayorista de cada termo y la bolsa o caja con la que lo entregás."
+                      : "la harina, la caja, la etiqueta. Todo lo que se usa por cada unidad que fabricás."
+                  }
                 />
               }
             >
-              La harina, la caja, la etiqueta — todo lo que se usa en cada unidad.
+              {esReventa
+                ? "El precio de compra mayorista y el packaging de cada unidad que revendés."
+                : "La harina, la caja, la etiqueta — todo lo que se usa en cada unidad."}
             </Encabezado>
             <div className="mb-4">
               <Aviso tono="consejo">
-                Si una bolsa de harina alcanza para 4 tortas y cuesta $240, poné $60 por unidad.
+                {esReventa
+                  ? "Si comprás una caja de 12 termos a $96.000, el precio de compra por unidad es $8.000. Sumá el packaging de cada uno."
+                  : "Si una bolsa de harina alcanza para 4 tortas y cuesta $240, poné $60 por unidad."}
               </Aviso>
             </div>
             <ListaConceptos
               idBase="variables"
               filas={filasVariables}
-              nombreFila="insumo"
-              placeholderNombre="Ej: Materia prima"
-              placeholderValor="85"
-              etiquetaAgregar="Agregar insumo o material"
+              nombreFila={esReventa ? "costo de compra" : "insumo"}
+              placeholderNombre={esReventa ? "Ej: Precio de compra mayorista" : "Ej: Materia prima"}
+              placeholderValor={esReventa ? "8000" : "85"}
+              etiquetaAgregar={esReventa ? "Agregar precio de compra o packaging" : "Agregar insumo o material"}
               onCambiar={cambiar("variable")}
               onEliminar={(id) => eliminarConcepto("variable", id)}
               onAgregar={agregar("variable", filasVariables)}
