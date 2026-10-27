@@ -27,6 +27,7 @@ const MENSAJES = {
   conceptoSinNombre: "Poné un nombre para este concepto.",
   horasVacias: "Indicá cuántas horas le dedicás a cada lote.",
   valorHoraVacio: "Indicá cuánto querés ganar por hora.",
+  sueldoVacio: "Indicá cuánto querés ganar por mes.",
 } as const;
 
 /**
@@ -44,7 +45,7 @@ export const MENSAJES_RUTA: Record<RutaProduccion, { volumenVacio: string; horas
   },
   reventa: {
     volumenVacio: "Indicá cuántas unidades vendés por mes.",
-    horasVacias: "Indicá cuánto tiempo le dedicás a cada venta.",
+    horasVacias: MENSAJES.sueldoVacio,
   },
 };
 
@@ -171,9 +172,16 @@ export function validarCostos(calculo: Calculo): ErrorValidacion[] {
     ),
   ];
 
-  // Trabajo propio: si completó uno de los dos datos, tiene que completar los dos.
-  const { horasPorLote, valorHora } = calculo.trabajoPropio;
-  if (!estaVacio(horasPorLote) || !estaVacio(valorHora)) {
+  // Trabajo propio. «Reventa»: un solo dato, el sueldo mensual. Las otras rutas: si completó uno de los dos, el otro también.
+  const { horasPorLote, valorHora, sueldoMensual } = calculo.trabajoPropio;
+  if (calculo.configuracion.ruta === "reventa") {
+    if (!estaVacio(sueldoMensual)) {
+      const sueldo = numeroPositivo(MENSAJES.sueldoVacio).safeParse(sueldoMensual);
+      if (!sueldo.success) {
+        errores.push({ campo: "trabajoPropio.sueldoMensual", mensaje: sueldo.error.issues[0].message, severidad: "error" });
+      }
+    }
+  } else if (!estaVacio(horasPorLote) || !estaVacio(valorHora)) {
     const horas = numeroPositivo(MENSAJES_RUTA[calculo.configuracion.ruta].horasVacias).safeParse(horasPorLote);
     if (!horas.success) {
       errores.push({ campo: "trabajoPropio.horasPorLote", mensaje: horas.error.issues[0].message, severidad: "error" });

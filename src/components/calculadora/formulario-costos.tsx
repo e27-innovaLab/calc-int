@@ -35,7 +35,7 @@ const TEXTOS_TRABAJO: Record<
     consejoFinal: "por unidad",
   },
   reventa: {
-    pregunta: "¿Cuánto tiempo le dedicás a cada venta (en horas)?",
+    pregunta: "¿Qué sueldo fijo querés ganar por mes?",
     multiplicador: "ventas",
     consejo: "por venta",
     consejoFinal: "por venta",
@@ -105,6 +105,7 @@ function Formulario() {
   const eliminarConcepto = useCalculoStore((s) => s.eliminarConcepto);
   const actualizarTrabajoPropio = useCalculoStore((s) => s.actualizarTrabajoPropio);
   const textosTrabajo = TEXTOS_TRABAJO[calculo.configuracion.ruta];
+  const esReventa = calculo.configuracion.ruta === "reventa";
   const cambiarPaso = useCalculoStore((s) => s.cambiarPaso);
 
   const [pestana, setPestana] = useState<Pestana>("fijos");
@@ -257,6 +258,33 @@ function Formulario() {
               Lo calculamos como costo fijo mensual.
             </Encabezado>
             <div className="flex flex-col gap-5">
+              {esReventa ? (
+                <>
+                  <Campo
+                    idControl="sueldo-mensual"
+                    etiqueta={textosTrabajo.pregunta}
+                    descripcion="Es lo que querés llevarte por tu trabajo, además de cubrir los costos del negocio."
+                    error={mensajeDe("trabajoPropio.sueldoMensual")}
+                    idError="sueldo-mensual-error"
+                  >
+                    <CampoMonto
+                      id="sueldo-mensual"
+                      placeholder="Ej: 300000"
+                      value={trabajoPropio.sueldoMensual}
+                      invalido={Boolean(mensajeDe("trabajoPropio.sueldoMensual"))}
+                      idError="sueldo-mensual-error"
+                      onBlur={() => tocar("trabajoPropio.sueldoMensual")}
+                      onChange={(valor) => actualizarTrabajoPropio({ sueldoMensual: valor })}
+                    />
+                  </Campo>
+                  {tieneTrabajo ? (
+                    <p className="rounded-xl bg-primary-50 px-4 py-3 text-sm text-primary-700" aria-live="polite">
+                      Sueldo mensual esperado = <strong>{formatearMonto(resumen.totalTrabajoPropioMensual)} / mes</strong>
+                    </p>
+                  ) : null}
+                </>
+              ) : (
+                <>
               <Campo
                 idControl="horas-por-lote"
                 etiqueta={textosTrabajo.pregunta}
@@ -320,6 +348,8 @@ function Formulario() {
                   <strong>{formatearMonto(resumen.totalTrabajoPropioMensual)} / mes</strong>
                 </p>
               ) : null}
+                </>
+              )}
               <Subtotal etiqueta="Subtotal trabajo propio" valor={formatearMonto(resumen.totalTrabajoPropioMensual)} />
             </div>
           </Tarjeta>
@@ -367,8 +397,9 @@ function Formulario() {
           </div>
 
           <Aviso tono="consejo">
-            El error más frecuente es no incluir el trabajo propio. Si hacés 4 hs {textosTrabajo.consejo} y querés ganar
-            $1.500/hs, eso son $6.000 de costo fijo {textosTrabajo.consejoFinal}.
+            {esReventa
+              ? "El error más frecuente es no incluir el trabajo propio. Si querés ganar $300.000 al mes, ese monto va como costo fijo y se reparte entre todas tus ventas."
+              : `El error más frecuente es no incluir el trabajo propio. Si hacés 4 hs ${textosTrabajo.consejo} y querés ganar $1.500/hs, eso son $6.000 de costo fijo ${textosTrabajo.consejoFinal}.`}
           </Aviso>
           {advertenciaDe("costosFijos") ? <Aviso tono="advertencia">{advertenciaDe("costosFijos")}</Aviso> : null}
         </div>

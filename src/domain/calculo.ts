@@ -61,6 +61,16 @@ function tocar(calculo: Calculo, ahora: string): Calculo {
   };
 }
 
+/**
+ * El tiempo propio entra al costo apenas el usuario completa algún dato de su ruta:
+ * el sueldo mensual en «reventa»; las horas o el valor por hora en las otras dos.
+ */
+function trabajoIncluido(ruta: RutaProduccion, t: TrabajoPropio): boolean {
+  return ruta === "reventa"
+    ? !estaVacio(t.sueldoMensual)
+    : !estaVacio(t.horasPorLote) || !estaVacio(t.valorHora);
+}
+
 /** Recalcula lo derivado de los lotes: volumen mensual y horas mensuales. */
 function sincronizarLotes(calculo: Calculo): Calculo {
   const { unidadesPorLote, lotes } = calculo.configuracion;
@@ -87,8 +97,9 @@ export function actualizarConfiguracion(
 
 /**
  * Cambia la ruta de producción del paso 1.
- * - De «lotes» a otra ruta (o al revés) se vacían el volumen y las horas: significan otra cosa y no hay que arrastrarlos.
- * - Entre «unidad» y «reventa» se conservan, porque las dos cargan el volumen por mes directamente.
+ * - De «lotes» a otra ruta (o al revés) se vacía el volumen: significa otra cosa y no hay que arrastrarlo.
+ * - Entre «unidad» y «reventa» se conserva el volumen, porque las dos lo cargan por mes directamente.
+ * - Las horas siempre se vacían (por lote, por unidad…) y el valor por hora y el sueldo mensual se conservan.
  * Las rutas que no usan lotes quedan con 1 unidad por lote y el volumen total en «lotes» (regla del 1 de Data).
  */
 export function cambiarRuta(calculo: Calculo, ruta: RutaProduccion, ahora: string): Calculo {
@@ -105,21 +116,19 @@ export function cambiarRuta(calculo: Calculo, ruta: RutaProduccion, ahora: strin
     unidadesPorLote: directaAhora ? "1" : "",
     lotes: directaAhora ? (conservar ? calculo.configuracion.lotes : "") : "1",
   };
-  const trabajoPropio: TrabajoPropio = conservar
-    ? calculo.trabajoPropio
-    : { ...calculo.trabajoPropio, horasPorLote: "", incluir: !estaVacio(calculo.trabajoPropio.valorHora) };
+  const trabajoPropio: TrabajoPropio = { ...calculo.trabajoPropio, horasPorLote: "" };
+  trabajoPropio.incluir = trabajoIncluido(ruta, trabajoPropio);
 
   return tocar(sincronizarLotes({ ...calculo, configuracion, trabajoPropio }), ahora);
 }
 
 export function actualizarTrabajoPropio(
   calculo: Calculo,
-  cambios: Partial<Pick<TrabajoPropio, "horasPorLote" | "valorHora">>,
+  cambios: Partial<Pick<TrabajoPropio, "horasPorLote" | "valorHora" | "sueldoMensual">>,
   ahora: string,
 ): Calculo {
   const trabajoPropio = { ...calculo.trabajoPropio, ...cambios };
-  // Se incluye el tiempo apenas el usuario completa alguno de los dos datos.
-  trabajoPropio.incluir = !estaVacio(trabajoPropio.horasPorLote) || !estaVacio(trabajoPropio.valorHora);
+  trabajoPropio.incluir = trabajoIncluido(calculo.configuracion.ruta, trabajoPropio);
   return tocar(sincronizarLotes({ ...calculo, trabajoPropio }), ahora);
 }
 

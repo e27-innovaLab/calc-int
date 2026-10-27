@@ -27,7 +27,7 @@ function remeras(volumen = "100"): Entrada {
     ],
     costosIndirectos: [],
     // «Sueldo propio $70.000» = 70 hs × $1.000 (equivalente mensual).
-    trabajoPropio: { incluir: true, horasPorLote: "70", horasMensuales: "70", valorHora: "1000" },
+    trabajoPropio: { incluir: true, horasPorLote: "70", horasMensuales: "70", valorHora: "1000", sueldoMensual: "" },
     costosVariables: [
       { id: "c", nombre: "Tela", categoria: "variable", montoUnitario: "3000" },
       { id: "d", nombre: "Estampa", categoria: "variable", montoUnitario: "1500" },
@@ -134,7 +134,7 @@ describe("«Regla del 1» de Data (reventa): 1 unidad por lote y en «Lotes por 
     configuracion: { ...CONFIGURACION_INICIAL, unidadesPorLote: "1", lotes: "200", volumenMensual: "200" },
     costosFijos: [{ id: "a", nombre: "Local", categoria: "fijo", monto: "20000", frecuencia: "mensual" }],
     costosIndirectos: [],
-    trabajoPropio: { incluir: true, horasPorLote: "0.25", horasMensuales: "50", valorHora: "2000" },
+    trabajoPropio: { incluir: true, horasPorLote: "0.25", horasMensuales: "50", valorHora: "2000", sueldoMensual: "" },
     costosVariables: [{ id: "b", nombre: "Compra del producto", categoria: "variable", montoUnitario: "3000" }],
   };
 

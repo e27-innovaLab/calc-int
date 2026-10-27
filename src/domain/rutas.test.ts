@@ -34,16 +34,19 @@ describe("cambiarRuta", () => {
     expect(c.trabajoPropio.valorHora).toBe("3000");
   });
 
-  it("entre «unidad» y «reventa» conserva el volumen y las horas", () => {
+  it("entre «unidad» y «reventa» conserva el volumen, vacía las horas y conserva el valor por hora", () => {
     let c = cambiarRuta(crearCalculoInicial(), "unidad", AHORA);
     c = actualizarConfiguracion(c, { lotes: "80" }, AHORA);
-    c = actualizarTrabajoPropio(c, { horasPorLote: "0.5" }, AHORA);
+    c = actualizarTrabajoPropio(c, { horasPorLote: "0.5", valorHora: "2000" }, AHORA);
     c = cambiarRuta(c, "reventa", AHORA);
 
     expect(c.configuracion.ruta).toBe("reventa");
     expect(c.configuracion.lotes).toBe("80");
     expect(c.configuracion.volumenMensual).toBe("80");
-    expect(c.trabajoPropio.horasPorLote).toBe("0.5");
+    expect(c.trabajoPropio.horasPorLote).toBe("");
+    expect(c.trabajoPropio.valorHora).toBe("2000");
+    // en «reventa» el tiempo propio solo cuenta si cargó el sueldo mensual
+    expect(c.trabajoPropio.incluir).toBe(false);
   });
 
   it("de una ruta directa a «lotes» vuelve a pedir las unidades por lote", () => {
@@ -62,13 +65,31 @@ describe("cambiarRuta", () => {
     expect(c.configuracion.volumenMensual).toBe("80");
   });
 
-  it("las horas por unidad se multiplican por el total de unidades", () => {
-    let c = cambiarRuta(crearCalculoInicial(), "reventa", AHORA);
+  it("en «unidad» las horas por unidad se multiplican por el total de unidades", () => {
+    let c = cambiarRuta(crearCalculoInicial(), "unidad", AHORA);
     c = actualizarConfiguracion(c, { lotes: "80" }, AHORA);
     c = actualizarTrabajoPropio(c, { horasPorLote: "0.5", valorHora: "2000" }, AHORA);
 
-    // 0,5 h × $2.000/h × 80 ventas = $80.000 por mes
+    // 0,5 h × $2.000/h × 80 unidades = $80.000 por mes
     expect(calcularResumenCostos(c).totalTrabajoPropioMensual).toBe("80000");
+  });
+
+  it("en «reventa» el sueldo mensual entra directo como costo fijo y no depende del volumen", () => {
+    const con = (ventas: string) => {
+      let c = cambiarRuta(crearCalculoInicial(), "reventa", AHORA);
+      c = actualizarConfiguracion(c, { lotes: ventas }, AHORA);
+      return actualizarTrabajoPropio(c, { sueldoMensual: "300000" }, AHORA);
+    };
+    expect(calcularResumenCostos(con("80")).totalTrabajoPropioMensual).toBe("300000");
+    expect(calcularResumenCostos(con("200")).totalTrabajoPropioMensual).toBe("300000");
+    expect(calcularResumenCostos(con("80")).costoFijoTotalMensual).toBe("300000");
+  });
+
+  it("en «reventa» ignora las horas aunque haya quedado algo cargado", () => {
+    let c = cambiarRuta(crearCalculoInicial(), "reventa", AHORA);
+    c = actualizarConfiguracion(c, { lotes: "80" }, AHORA);
+    c = actualizarTrabajoPropio(c, { sueldoMensual: "100000", horasPorLote: "3", valorHora: "5000" }, AHORA);
+    expect(calcularResumenCostos(c).totalTrabajoPropioMensual).toBe("100000");
   });
 });
 
@@ -98,12 +119,21 @@ describe("validaciones según la ruta", () => {
     expect(validarConfiguracion(conRuta("reventa", { lotes: "80" }))).toEqual([]);
   });
 
-  it("el mensaje de horas vacías cambia con la ruta", () => {
-    for (const ruta of ["lotes", "unidad", "reventa"] as const) {
+  it("el mensaje de horas vacías cambia con la ruta (lotes y unidad)", () => {
+    for (const ruta of ["lotes", "unidad"] as const) {
       let c = cambiarRuta(crearCalculoInicial(), ruta, AHORA);
-      c = actualizarTrabajoPropio(c, { incluir: true, horasPorLote: "", valorHora: "1000" }, AHORA);
+      c = actualizarTrabajoPropio(c, { horasPorLote: "", valorHora: "1000" }, AHORA);
       const error = validarCostos(c).find((e) => e.campo === "trabajoPropio.horasPorLote");
       expect(error?.mensaje).toBe(MENSAJES_RUTA[ruta].horasVacias);
     }
+  });
+
+  it("«reventa» valida solo el sueldo mensual y no pide horas ni valor por hora", () => {
+    let c = cambiarRuta(crearCalculoInicial(), "reventa", AHORA);
+    c = actualizarTrabajoPropio(c, { sueldoMensual: "300000" }, AHORA);
+    expect(validarCostos(c).filter((e) => e.campo.startsWith("trabajoPropio"))).toEqual([]);
+
+    c = actualizarTrabajoPropio(c, { sueldoMensual: "0" }, AHORA);
+    expect(validarCostos(c).map((e) => e.campo)).toContain("trabajoPropio.sueldoMensual");
   });
 });

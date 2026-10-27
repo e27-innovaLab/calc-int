@@ -118,7 +118,7 @@ export type CategoriaCosto = ConceptoCosto["categoria"];
 export interface TrabajoPropio {
   /** Si el usuario decide incluir el valor de su tiempo en el costo. */
   incluir: boolean;
-  /** Horas que le dedica a cada lote (ruta «lotes»), a cada unidad (ruta «unidad») o a cada venta (ruta «reventa»). */
+  /** Horas que le dedica a cada lote (ruta «lotes») o a cada unidad (ruta «unidad»). La ruta «reventa» no las usa. */
   horasPorLote: DecimalString;
   /**
    * Horas trabajadas por mes = `horasPorLote × lotes`.
@@ -127,6 +127,11 @@ export interface TrabajoPropio {
   horasMensuales: DecimalString;
   /** Cuánto vale una hora de trabajo. */
   valorHora: DecimalString;
+  /**
+   * Sueldo fijo que quiere ganar por mes. Solo lo usa la ruta «reventa» (Alternativa 2 del glosario de Data,
+   * elegida por el equipo): entra directo como costo fijo y no se multiplica por el volumen.
+   */
+  sueldoMensual: DecimalString;
 }
 
 // ─────────────────────────────────────────────
@@ -249,4 +254,5 @@ export const TRABAJO_PROPIO_INICIAL: TrabajoPropio = {
   horasPorLote: "",
   horasMensuales: "",
   valorHora: "",
+  sueldoMensual: "",
 };

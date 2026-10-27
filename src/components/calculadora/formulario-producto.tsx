@@ -81,9 +81,7 @@ export function FormularioProducto() {
 function Formulario() {
   const router = useRouter();
   const configuracion = useCalculoStore((s) => s.calculo.configuracion);
-  const horasPorUnidad = useCalculoStore((s) => s.calculo.trabajoPropio.horasPorLote);
   const actualizarConfiguracion = useCalculoStore((s) => s.actualizarConfiguracion);
-  const actualizarTrabajoPropio = useCalculoStore((s) => s.actualizarTrabajoPropio);
   const cambiarRuta = useCalculoStore((s) => s.cambiarRuta);
   const cambiarPaso = useCalculoStore((s) => s.cambiarPaso);
   const ruta = configuracion.ruta;
@@ -266,22 +264,6 @@ function Formulario() {
                 )}
               />
             </Campo>
-
-            {ruta === "reventa" ? (
-              <Campo
-                idControl="horas-por-venta"
-                etiqueta="Tiempo invertido por venta (horas)"
-                descripcion="Incluí el tiempo de compra, publicación, preparación y entrega."
-              >
-                <CampoMonto
-                  id="horas-por-venta"
-                  prefijo={null}
-                  placeholder="Ej: 0,5"
-                  value={horasPorUnidad}
-                  onChange={(valor) => actualizarTrabajoPropio({ horasPorLote: valor })}
-                />
-              </Campo>
-            ) : null}
           </div>
 
           <div aria-live="polite" className="min-h-12">
