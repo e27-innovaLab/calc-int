@@ -34,17 +34,17 @@ export function Pasos() {
                 aria-hidden="true"
                 className={`flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
                   esActual
-                    ? "bg-primary-600 text-white"
+                    ? "bg-accent-400 text-primary-900"
                     : completado
-                      ? "bg-success-600 text-white"
+                      ? "bg-primary-900 text-white"
                       : "bg-gray-200 text-gray-700"
                 }`}
               >
                 {completado ? "✓" : i + 1}
               </span>
               <span
-                className={`text-xs font-bold uppercase tracking-wide ${esActual ? "" : "hidden sm:inline"} ${
-                  esActual ? "text-primary-700" : completado ? "text-success-700" : "text-gray-500"
+                className={`text-sm font-semibold ${esActual ? "" : "hidden sm:inline"} ${
+                  esActual || completado ? "text-primary-900" : "text-gray-500"
                 }`}
               >
                 {paso.etiqueta}
@@ -52,7 +52,7 @@ export function Pasos() {
               </span>
             </>
           );
-          const clases = `flex items-center gap-2 rounded-lg px-2 py-1.5 ${esActual ? "bg-primary-50" : ""}`;
+          const clases = "flex items-center gap-2 rounded-lg px-2 py-1.5";
 
           return (
             <li key={paso.etiqueta} className="flex items-center gap-1 sm:gap-2">

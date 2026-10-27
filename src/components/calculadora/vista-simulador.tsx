@@ -81,6 +81,7 @@ function Simulador() {
   return (
     <div className="flex flex-col gap-8">
       <div>
+        <p className="mb-1 text-xs font-bold uppercase tracking-widest text-primary-600">Paso 5 de 5</p>
         <h1 className="text-3xl font-bold tracking-tight text-gray-900">¿Qué pasa si…?</h1>
         <p className="mt-2 text-lg text-gray-700">
           Movés los sliders y mirá cómo cambia tu negocio. No pasa nada real — solo jugamos con tus números.

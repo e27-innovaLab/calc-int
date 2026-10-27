@@ -30,10 +30,24 @@ function Esqueleto() {
   );
 }
 
+/** Íconos de las pestañas (Figma). Decorativos: la etiqueta ya dice lo mismo. */
+const ICONO_FIJOS = (
+  <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="size-4">
+    <rect x="5" y="3" width="14" height="18" rx="2" />
+    <path d="M9 8h6M9 12h6M9 16h4" />
+  </svg>
+);
+const ICONO_VARIABLES = (
+  <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="size-4">
+    <rect x="3" y="6" width="18" height="12" rx="2" />
+    <circle cx="12" cy="12" r="2.5" />
+  </svg>
+);
+
 function Subtotal({ etiqueta, valor }: { etiqueta: string; valor: string }) {
   return (
     <div className="flex items-center justify-between rounded-xl bg-gray-100 px-4 py-3 text-sm">
-      <span className="text-gray-700">{etiqueta}</span>
+      <span className="text-xs font-semibold uppercase tracking-wider text-gray-700">{etiqueta}</span>
       <strong className="text-base text-gray-900">{valor}</strong>
     </div>
   );
@@ -135,6 +149,7 @@ function Formulario() {
   return (
     <div className="flex flex-col gap-6">
       <div>
+        <p className="mb-1 text-xs font-bold uppercase tracking-widest text-primary-600">Paso 2 de 5</p>
         <h1 className="text-3xl font-bold tracking-tight text-gray-900">
           {pestana === "fijos" ? "¿Cuánto te cuesta producir?" : "Cargá tus costos"}
         </h1>
@@ -157,10 +172,10 @@ function Formulario() {
       <div role="tablist" aria-label="Tipo de costos" className="grid grid-cols-2 gap-1 rounded-xl bg-gray-100 p-1">
         {(
           [
-            ["fijos", "Costos Fijos"],
-            ["variables", "Costos Variables"],
+            ["fijos", "Costos Fijos", ICONO_FIJOS],
+            ["variables", "Costos Variables", ICONO_VARIABLES],
           ] as const
-        ).map(([id, etiqueta]) => (
+        ).map(([id, etiqueta, icono]) => (
           <button
             key={id}
             type="button"
@@ -169,10 +184,11 @@ function Formulario() {
             aria-selected={pestana === id}
             aria-controls={`panel-${id}`}
             onClick={() => setPestana(id)}
-            className={`rounded-lg px-4 py-3 text-base font-semibold focus-visible:outline-2 focus-visible:outline-primary-600 ${
+            className={`inline-flex items-center justify-center gap-2 rounded-lg px-4 py-3 text-base font-semibold focus-visible:outline-2 focus-visible:outline-primary-600 ${
               pestana === id ? "bg-white text-primary-700 shadow-sm" : "text-gray-700 hover:text-gray-900"
             }`}
           >
+            {icono}
             {etiqueta}
           </button>
         ))}
@@ -313,7 +329,7 @@ function Formulario() {
             </div>
           </Tarjeta>
 
-          <div className="flex items-center justify-between gap-4 rounded-2xl bg-primary-600 px-6 py-5 text-white">
+          <div className="flex items-center justify-between gap-4 rounded-2xl bg-primary-900 px-6 py-5 text-white">
             <div>
               <p className="flex items-center gap-2 text-lg font-semibold">Costo Fijo Total / mes</p>
               <p className="text-sm text-primary-100">Gastos + Trabajo + Indirectos</p>
