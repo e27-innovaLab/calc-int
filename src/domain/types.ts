@@ -22,7 +22,7 @@ export type Id = string;
 export type TipoOferta = "producto" | "servicio";
 
 /**
- * Cómo produce o consigue lo que vende el usuario (primer paso del recorrido, «¿Cómo producís?»).
+ * Cómo produce o consigue lo que vende el usuario (primer paso del recorrido, «¿Cómo comercializás tu producto?»).
  * - `lotes`: produce en tandas (pastelería, velas). Unidades por lote × lotes por mes.
  * - `unidad`: arma cada producto a medida. Carga el volumen por mes y las horas por unidad.
  * - `reventa`: compra productos terminados. Carga las ventas por mes y el tiempo que le lleva cada venta.

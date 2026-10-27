@@ -137,7 +137,7 @@ function Formulario() {
       <div>
         <p className="mb-1 text-xs font-bold uppercase tracking-widest text-primary-600">Paso 1 de 5</p>
         <h1 id="ruta-titulo" className="text-3xl font-bold tracking-tight text-gray-900">
-          ¿Cómo producís?
+          ¿Cómo comercializás tu producto?
         </h1>
         <p className="mt-2 text-lg text-gray-700">Elegí la ruta que mejor se parece a tu forma de trabajar.</p>
       </div>
@@ -317,7 +317,7 @@ function Formulario() {
 
       <DialogoConfirmar
         abierto={rutaPendiente !== null}
-        titulo="¿Cambiar la forma de producir?"
+        titulo="¿Cambiar la forma de comercializar?"
         descripcion={
           rutaPendiente
             ? `Al pasar a «${OPCIONES_RUTA[rutaPendiente].titulo}» se borra lo que cargaste de ${unirEnLista(datosAPerder)}, porque significa otra cosa en esa ruta. El resto de tus costos se conserva.`

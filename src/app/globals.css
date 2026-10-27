@@ -61,6 +61,11 @@ body {
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
 }
 
+/* «Guardar como imagen»: mientras se genera, los botones del resumen no ocupan lugar en la captura. */
+body.capturando-imagen [data-sin-imagen] {
+  display: none;
+}
+
 /* «Guardar resumen»: al imprimir desde el simulador solo queda visible el resumen final. */
 @media print {
   body.imprimiendo-resumen * {

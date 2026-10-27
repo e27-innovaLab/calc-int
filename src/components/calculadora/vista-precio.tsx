@@ -13,6 +13,7 @@ import { MARGEN_MAXIMO_PCT, nivelDeMargen, precioPorMargen, type NivelMargen } f
 import { useAnalisisPrecio } from "@/hooks/use-analisis-precio";
 import { useHidratado } from "@/hooks/use-hidratado";
 import { formatearCantidad, formatearMonto, formatearPorcentaje } from "@/lib/formato";
+import { indiceDePestana } from "@/lib/navegacion-teclado";
 import type { ModoPrecio } from "@/domain/types";
 import { useCalculoStore } from "@/store/calculo-store";
 
@@ -86,7 +87,7 @@ function Precio() {
       </div>
 
       <div role="tablist" aria-label="Cómo definir el precio" className="grid grid-cols-2 gap-1 rounded-xl bg-gray-100 p-1">
-        {PESTAÑAS.map((p) => {
+        {PESTAÑAS.map((p, indice) => {
           const activa = modo === p.modo;
           return (
             <button
@@ -96,7 +97,15 @@ function Precio() {
               id={`${idPanel}-${p.modo}`}
               aria-selected={activa}
               aria-controls={`${idPanel}-panel`}
+              tabIndex={activa ? 0 : -1}
               onClick={() => actualizarPrecio({ modo: p.modo })}
+              onKeyDown={(e) => {
+                const destino = indiceDePestana(e.key, indice, PESTAÑAS.length);
+                if (destino === null) return;
+                e.preventDefault();
+                actualizarPrecio({ modo: PESTAÑAS[destino].modo });
+                document.getElementById(`${idPanel}-${PESTAÑAS[destino].modo}`)?.focus();
+              }}
               className={`rounded-lg px-4 py-3 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-primary-600 ${
                 activa ? "bg-white text-primary-600 shadow-sm" : "text-gray-500 hover:text-gray-900"
               }`}
