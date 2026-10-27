@@ -150,3 +150,92 @@ describe("«Regla del 1» de Data (reventa): 1 unidad por lote y en «Lotes por 
     expect(costoTotalPorLote("3600", "1")).toBe("3600");
   });
 });
+
+/**
+ * «Simulador bifurcado» de Data (Nuevo_Simulador_App.xlsx, revisado el 27/10): pestañas 1_MODO_LOTES, 2_MODO_UNIDAD y
+ * 4_REVENDEDOR_ALT2 (la alternativa que eligió el equipo). Fijos: alquiler $15.000 y servicios $5.000; indirectos $1.200;
+ * margen 40 %. Las cifras de la pestaña 4 están tal cual las muestra la planilla.
+ */
+function simulador(parcial: Pick<Entrada, "configuracion" | "trabajoPropio"> & { cvu: [string, string] }): Entrada {
+  return {
+    configuracion: parcial.configuracion,
+    trabajoPropio: parcial.trabajoPropio,
+    costosFijos: [
+      { id: "a", nombre: "Alquiler / Taller", categoria: "fijo", monto: "15000", frecuencia: "mensual" },
+      { id: "b", nombre: "Servicios", categoria: "fijo", monto: "5000", frecuencia: "mensual" },
+    ],
+    costosIndirectos: [{ id: "i", nombre: "Otros indirectos", categoria: "indirecto", monto: "1200", frecuencia: "mensual" }],
+    costosVariables: [
+      { id: "v1", nombre: "Insumo", categoria: "variable", montoUnitario: parcial.cvu[0] },
+      { id: "v2", nombre: "Empaque", categoria: "variable", montoUnitario: parcial.cvu[1] },
+    ],
+  };
+}
+
+describe("Simulador bifurcado · pestaña 4_REVENDEDOR_ALT2 (sueldo fijo)", () => {
+  const caso = simulador({
+    configuracion: { ...CONFIGURACION_INICIAL, ruta: "reventa", unidadesPorLote: "1", lotes: "100", volumenMensual: "100" },
+    trabajoPropio: { incluir: true, horasPorLote: "", horasMensuales: "", valorHora: "", sueldoMensual: "150000" },
+    cvu: ["3000", "50"],
+  });
+  const r = calcularResumenCostos(caso);
+
+  it("subtotal de trabajo $150.000, CFT $171.200 y CVU $3.050", () => {
+    expect(r.totalTrabajoPropioMensual).toBe("150000");
+    expect(r.costoFijoTotalMensual).toBe("171200");
+    expect(r.costoVariableUnitario).toBe("3050");
+  });
+
+  it("costo unitario real $4.762", () => {
+    expect(r.costoUnitario).toBe("4762");
+  });
+
+  it("precio sugerido $7.936,67, contribución $4.886,67, equilibrio 36 u. y $285.720", () => {
+    const precio = precioPorMargen(caso, "40")!;
+    expect(dec(precio)).toBe("7936.67");
+    const a = analizarPrecio(caso, precio)!;
+    expect(dec(a.contribucion)).toBe("4886.67");
+    expect(a.puntoEquilibrioUnidades).toBe("36");
+    expect(dec(a.facturacionMinima)).toBe("285720.00");
+  });
+});
+
+describe("Simulador bifurcado · pestaña 1_MODO_LOTES", () => {
+  it("4 lotes × 6 hs × $2.000 = $48.000 de trabajo y CFT $69.200 (la planilla tiene el volumen en 0)", () => {
+    const caso = simulador({
+      configuracion: { ...CONFIGURACION_INICIAL, ruta: "lotes", unidadesPorLote: "25", lotes: "4", volumenMensual: "100" },
+      trabajoPropio: { incluir: true, horasPorLote: "6", horasMensuales: "24", valorHora: "2000", sueldoMensual: "" },
+      cvu: ["60", "25"],
+    });
+    const r = calcularResumenCostos(caso);
+    expect(r.totalTrabajoPropioMensual).toBe("48000");
+    expect(r.costoFijoTotalMensual).toBe("69200");
+    expect(r.costoVariableUnitario).toBe("85");
+  });
+});
+
+describe("Simulador bifurcado · pestaña 2_MODO_UNIDAD", () => {
+  it("8 hs por unidad × $2.500 × 10 unidades = $200.000 de trabajo (la planilla tiene el volumen en 0)", () => {
+    const caso = simulador({
+      configuracion: { ...CONFIGURACION_INICIAL, ruta: "unidad", unidadesPorLote: "1", lotes: "10", volumenMensual: "10" },
+      trabajoPropio: { incluir: true, horasPorLote: "8", horasMensuales: "80", valorHora: "2500", sueldoMensual: "" },
+      cvu: ["60", "25"],
+    });
+    const r = calcularResumenCostos(caso);
+    expect(r.totalTrabajoPropioMensual).toBe("200000");
+    expect(r.costoFijoTotalMensual).toBe("221200");
+  });
+});
+
+describe("Simulador bifurcado · pestaña 4, paso 5: suba de costos del 20 %", () => {
+  it("el CVU pasa de $3.050 a $3.660, el costo unitario a $5.372 y el equilibrio a 41 unidades", () => {
+    const caso = simulador({
+      configuracion: { ...CONFIGURACION_INICIAL, ruta: "reventa", unidadesPorLote: "1", lotes: "100", volumenMensual: "100" },
+      trabajoPropio: { incluir: true, horasPorLote: "", horasMensuales: "", valorHora: "", sueldoMensual: "150000" },
+      cvu: ["3000", "50"],
+    });
+    const nuevo = simularEscenario(caso, precioPorMargen(caso, "40")!, "insumos", "20")!;
+    expect(nuevo.costoUnitario).toBe("5372");
+    expect(nuevo.puntoEquilibrio).toBe("41");
+  });
+});
