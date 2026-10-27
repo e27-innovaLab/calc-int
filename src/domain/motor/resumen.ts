@@ -2,7 +2,7 @@ import Decimal from "decimal.js";
 
 import type { Calculo, DecimalString } from "@/domain/types";
 
-import { calcularResumenCostos, importeValido, montoMensual } from "./costos";
+import { calcularResumenCostos, importeValido, montoMensual, trabajoPropioMensual } from "./costos";
 import { aDecimalString } from "./decimal";
 import { leerNumero } from "./numeros";
 
@@ -82,6 +82,8 @@ export interface LineaDetalle {
 }
 
 export interface DetalleTrabajoPropio {
+  /** Ruta «reventa»: es el sueldo mensual directo y no hay horas ni lotes que mostrar. */
+  sueldoDirecto: boolean;
   horasPorLote: DecimalString;
   valorHora: DecimalString;
   lotes: DecimalString;
@@ -124,10 +126,11 @@ export function detalleDeCostos(calculo: EntradaResumen): DetalleCostos {
     .filter(conMonto);
 
   const t = calculo.trabajoPropio;
-  const totalTrabajo = importeValido(t.horasMensuales).times(importeValido(t.valorHora));
+  const totalTrabajo = trabajoPropioMensual(calculo);
   const trabajoPropio =
     t.incluir && totalTrabajo.greaterThan(0)
       ? {
+          sueldoDirecto: calculo.configuracion.ruta === "reventa",
           horasPorLote: t.horasPorLote,
           valorHora: t.valorHora,
           lotes: calculo.configuracion.lotes,

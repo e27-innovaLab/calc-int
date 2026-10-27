@@ -10,7 +10,9 @@ import { Boton } from "@/components/ui/boton";
 import { Campo, clasesCampo } from "@/components/ui/campo";
 import { CampoMonto } from "@/components/ui/campo-monto";
 import { Tarjeta } from "@/components/ui/tarjeta";
-import { configuracionSchema, type ConfiguracionFormulario } from "@/domain/validaciones";
+import { SelectorRuta } from "@/components/calculadora/selector-ruta";
+import type { RutaProduccion } from "@/domain/types";
+import { crearConfiguracionSchema, type ConfiguracionFormulario } from "@/domain/validaciones";
 import { useHidratado } from "@/hooks/use-hidratado";
 import { formatearCantidad } from "@/lib/formato";
 import { useCalculoStore } from "@/store/calculo-store";
@@ -31,6 +33,36 @@ const PERIODOS = [
   { valor: "mensual", etiqueta: "Mensual", disponible: true },
 ];
 
+/** Textos del bloque de volumen para cada ruta (Figma, «Estado actual para front»). */
+const TEXTOS_RUTA: Record<
+  RutaProduccion,
+  { titulo: string; ayudaSobre: string; ayuda: string; ejemplo: string; etiquetaVolumen: string; pistaVolumen?: string }
+> = {
+  lotes: {
+    titulo: "Tu producción por período",
+    ayudaSobre: "cuánto producís por mes",
+    ayuda: "Usaremos este dato para repartir los costos fijos entre todas tus unidades.",
+    ejemplo: "si hacés 2 tandas de 24 velas por mes, poné 24 unidades por lote y 2 lotes.",
+    etiquetaVolumen: "Lotes por mes",
+  },
+  unidad: {
+    titulo: "Tu volumen por período",
+    ayudaSobre: "cuántas unidades producís por mes",
+    ayuda: "Usaremos este dato para repartir los costos fijos entre todas tus unidades.",
+    ejemplo: "si armás 80 piezas por mes, poné 80. Si no sabés, poné tu estimación más realista.",
+    etiquetaVolumen: "¿Cuántas unidades producís por período?",
+    pistaVolumen: "Contá cada pieza terminada como una unidad.",
+  },
+  reventa: {
+    titulo: "Tus ventas estimadas por período",
+    ayudaSobre: "cuántas unidades vendés por mes",
+    ayuda: "Usaremos este dato para repartir los costos fijos y tu tiempo entre cada venta.",
+    ejemplo: "si vendés 80 productos por mes, poné 80. Si no sabés, poné tu estimación más realista.",
+    etiquetaVolumen: "¿Cuántas unidades vendés por período?",
+    pistaVolumen: "Contá cada producto vendido como una unidad.",
+  },
+};
+
 function Esqueleto() {
   return (
     <div aria-busy="true" aria-label="Cargando tu cálculo" className="flex animate-pulse flex-col gap-6">
@@ -50,15 +82,18 @@ function Formulario() {
   const router = useRouter();
   const configuracion = useCalculoStore((s) => s.calculo.configuracion);
   const actualizarConfiguracion = useCalculoStore((s) => s.actualizarConfiguracion);
+  const cambiarRuta = useCalculoStore((s) => s.cambiarRuta);
   const cambiarPaso = useCalculoStore((s) => s.cambiarPaso);
+  const ruta = configuracion.ruta;
 
   const {
     register,
     control,
     handleSubmit,
+    reset,
     formState: { errors },
   } = useForm<ConfiguracionFormulario>({
-    resolver: zodResolver(configuracionSchema),
+    resolver: zodResolver(crearConfiguracionSchema(ruta)),
     mode: "onTouched",
     defaultValues: {
       nombre: configuracion.nombre,
@@ -71,6 +106,14 @@ function Formulario() {
   const volumenListo = configuracion.volumenMensual !== "";
   const unidades = UNIDADES_DE_VENTA.find((u) => u.valor === configuracion.unidadVenta)?.etiqueta ?? configuracion.unidadVenta;
 
+  /** Al cambiar de ruta el store recalcula los campos que no aplican; el formulario se vuelve a sincronizar con ellos. */
+  function elegirRuta(nueva: RutaProduccion) {
+    if (nueva === ruta) return;
+    cambiarRuta(nueva);
+    const { nombre, unidadVenta, unidadesPorLote, lotes } = useCalculoStore.getState().calculo.configuracion;
+    reset({ nombre, unidadVenta, unidadesPorLote, lotes });
+  }
+
   const continuar = handleSubmit(() => {
     cambiarPaso("costos");
     router.push("/calculadora/costos");
@@ -80,11 +123,13 @@ function Formulario() {
     <form onSubmit={continuar} noValidate className="flex flex-col gap-8">
       <div>
         <p className="mb-1 text-xs font-bold uppercase tracking-widest text-primary-600">Paso 1 de 5</p>
-        <h1 className="text-3xl font-bold tracking-tight text-gray-900">Contame sobre tu producto</h1>
-        <p className="mt-2 text-lg text-gray-700">
-          Empezamos con lo básico. Esto personaliza todos los cálculos para tu negocio real.
-        </p>
+        <h1 id="ruta-titulo" className="text-3xl font-bold tracking-tight text-gray-900">
+          ¿Cómo producís?
+        </h1>
+        <p className="mt-2 text-lg text-gray-700">Elegí la ruta que mejor se parece a tu forma de trabajar.</p>
       </div>
+
+      <SelectorRuta valor={ruta} onChange={elegirRuta} />
 
       <Tarjeta className="flex flex-col gap-6">
         <Campo
@@ -110,39 +155,24 @@ function Formulario() {
           />
         </Campo>
 
-        <div className="grid gap-6 sm:grid-cols-2">
-          {/* La aclaración va DEBAJO del desplegable (como en Figma) para que Moneda y Unidad de venta queden alineados. */}
-          <Campo idControl="moneda" etiqueta="Moneda">
-            <select
-              id="moneda"
-              disabled
-              aria-describedby="moneda-nota"
-              className={`${clasesCampo(false)} bg-gray-50`}
-              defaultValue="ARS"
-            >
-              <option value="ARS">$ (Peso AR)</option>
-            </select>
-            <p id="moneda-nota" className="text-sm text-gray-500">
-              Por ahora calculamos solo en pesos argentinos.
-            </p>
-          </Campo>
-
-          <Campo idControl="unidad-venta" etiqueta="Unidad de venta" error={errors.unidadVenta?.message} idError="unidad-venta-error">
-            <select
-              id="unidad-venta"
-              aria-invalid={errors.unidadVenta ? true : undefined}
-              aria-describedby={errors.unidadVenta ? "unidad-venta-error" : undefined}
-              className={clasesCampo(Boolean(errors.unidadVenta))}
-              {...register("unidadVenta", { onChange: (e) => actualizarConfiguracion({ unidadVenta: e.target.value }) })}
-            >
-              {UNIDADES_DE_VENTA.map((u) => (
-                <option key={u.valor} value={u.valor}>
-                  {u.etiqueta}
-                </option>
-              ))}
-            </select>
-          </Campo>
-        </div>
+        <Campo idControl="unidad-venta" etiqueta="Unidad de venta" error={errors.unidadVenta?.message} idError="unidad-venta-error">
+          <select
+            id="unidad-venta"
+            aria-invalid={errors.unidadVenta ? true : undefined}
+            aria-describedby={errors.unidadVenta ? "unidad-venta-error" : "unidad-venta-nota"}
+            className={clasesCampo(Boolean(errors.unidadVenta))}
+            {...register("unidadVenta", { onChange: (e) => actualizarConfiguracion({ unidadVenta: e.target.value }) })}
+          >
+            {UNIDADES_DE_VENTA.map((u) => (
+              <option key={u.valor} value={u.valor}>
+                {u.etiqueta}
+              </option>
+            ))}
+          </select>
+          <p id="unidad-venta-nota" className="text-sm text-gray-500">
+            Todos los valores se calculan en pesos argentinos.
+          </p>
+        </Campo>
 
         <fieldset className="flex flex-col gap-2">
           <legend className="mb-1 text-base font-medium text-gray-900">Período de referencia</legend>
@@ -171,46 +201,45 @@ function Formulario() {
 
         <div className="flex flex-col gap-3">
           <div className="flex items-center gap-2">
-            <h2 className="text-base font-medium text-gray-900">¿Cuánto pensás producir este mes?</h2>
-            <Ayuda
-              sobre="cuánto producís por mes"
-              texto="Usaremos este dato para repartir los costos fijos entre todas tus unidades."
-              ejemplo="si vendés 100 remeras al mes, poné 100 acá. Si no sabés, poné tu estimación más realista."
-            />
+            <h2 className="text-base font-medium text-gray-900">{TEXTOS_RUTA[ruta].titulo}</h2>
+            <Ayuda sobre={TEXTOS_RUTA[ruta].ayudaSobre} texto={TEXTOS_RUTA[ruta].ayuda} ejemplo={TEXTOS_RUTA[ruta].ejemplo} />
           </div>
 
           <div className="grid gap-6 sm:grid-cols-2">
-            <Campo
-              idControl="unidades-por-lote"
-              etiqueta="Unidades por lote"
-              error={errors.unidadesPorLote?.message}
-              idError="unidades-por-lote-error"
-            >
-              <Controller
-                control={control}
-                name="unidadesPorLote"
-                render={({ field }) => (
-                  <CampoMonto
-                    id="unidades-por-lote"
-                    ref={field.ref}
-                    prefijo={null}
-                    placeholder="Ej: 20"
-                    value={field.value}
-                    invalido={Boolean(errors.unidadesPorLote)}
-                    idError="unidades-por-lote-error"
-                    onBlur={field.onBlur}
-                    onChange={(valor) => {
-                      field.onChange(valor);
-                      actualizarConfiguracion({ unidadesPorLote: valor });
-                    }}
-                  />
-                )}
-              />
-            </Campo>
+            {ruta === "lotes" ? (
+              <Campo
+                idControl="unidades-por-lote"
+                etiqueta="Unidades por lote"
+                error={errors.unidadesPorLote?.message}
+                idError="unidades-por-lote-error"
+              >
+                <Controller
+                  control={control}
+                  name="unidadesPorLote"
+                  render={({ field }) => (
+                    <CampoMonto
+                      id="unidades-por-lote"
+                      ref={field.ref}
+                      prefijo={null}
+                      placeholder="Ej: 24"
+                      value={field.value}
+                      invalido={Boolean(errors.unidadesPorLote)}
+                      idError="unidades-por-lote-error"
+                      onBlur={field.onBlur}
+                      onChange={(valor) => {
+                        field.onChange(valor);
+                        actualizarConfiguracion({ unidadesPorLote: valor });
+                      }}
+                    />
+                  )}
+                />
+              </Campo>
+            ) : null}
 
             <Campo
               idControl="lotes"
-              etiqueta="Lotes por mes"
+              etiqueta={TEXTOS_RUTA[ruta].etiquetaVolumen}
+              descripcion={TEXTOS_RUTA[ruta].pistaVolumen}
               error={errors.lotes?.message}
               idError="lotes-error"
             >
@@ -222,7 +251,7 @@ function Formulario() {
                     id="lotes"
                     ref={field.ref}
                     prefijo={null}
-                    placeholder="Ej: 6"
+                    placeholder={ruta === "lotes" ? "Ej: 2" : "Ej: 80"}
                     value={field.value}
                     invalido={Boolean(errors.lotes)}
                     idError="lotes-error"
@@ -242,8 +271,17 @@ function Formulario() {
               <p className="flex items-center gap-2 rounded-xl bg-success-50 px-4 py-3 text-sm text-success-700">
                 <span aria-hidden="true">✓</span>
                 <span>
-                  Producís <strong>{formatearCantidad(configuracion.volumenMensual)} {unidades}</strong> por mes (
-                  {formatearCantidad(configuracion.unidadesPorLote)} × {formatearCantidad(configuracion.lotes)} lotes)
+                  {ruta === "lotes" ? (
+                    <>
+                      Producís <strong>{formatearCantidad(configuracion.volumenMensual)} {unidades}</strong> por mes (
+                      {formatearCantidad(configuracion.unidadesPorLote)} × {formatearCantidad(configuracion.lotes)} lotes)
+                    </>
+                  ) : (
+                    <>
+                      {ruta === "reventa" ? "Vendés" : "Producís"}{" "}
+                      <strong>{formatearCantidad(configuracion.volumenMensual)} {unidades}</strong> por mes
+                    </>
+                  )}
                 </span>
               </p>
             ) : null}

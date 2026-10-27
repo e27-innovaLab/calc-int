@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { calcularResumenCostos } from "@/domain/motor/costos";
 import { estaVacio, leerNumero } from "@/domain/motor/numeros";
-import type { Calculo, ErrorValidacion } from "@/domain/types";
+import type { Calculo, ErrorValidacion, RutaProduccion } from "@/domain/types";
 
 /**
  * Validaciones del recorrido (Semana 1). Una sola fuente de reglas, con Zod:
@@ -27,7 +27,27 @@ const MENSAJES = {
   conceptoSinNombre: "Poné un nombre para este concepto.",
   horasVacias: "Indicá cuántas horas le dedicás a cada lote.",
   valorHoraVacio: "Indicá cuánto querés ganar por hora.",
+  sueldoVacio: "Indicá cuánto querés ganar por mes.",
 } as const;
+
+/**
+ * Textos que cambian según la ruta del paso 1 («lotes», «unidad» o «reventa»).
+ * Las rutas «unidad» y «reventa» cargan el volumen total en `lotes` (regla del 1 de Data).
+ */
+export const MENSAJES_RUTA: Record<RutaProduccion, { volumenVacio: string; horasVacias: string }> = {
+  lotes: {
+    volumenVacio: MENSAJES.lotesVacios,
+    horasVacias: MENSAJES.horasVacias,
+  },
+  unidad: {
+    volumenVacio: "Indicá cuántas unidades producís por mes.",
+    horasVacias: "Indicá cuántas horas le dedicás a cada unidad.",
+  },
+  reventa: {
+    volumenVacio: "Indicá cuántas unidades vendés por mes.",
+    horasVacias: MENSAJES.sueldoVacio,
+  },
+};
 
 /** Número mayor a cero (opcionalmente entero). */
 function numeroPositivo(mensajeVacio: string, { entero = false }: { entero?: boolean } = {}) {
@@ -65,13 +85,20 @@ function montoNoNegativo(mensajeVacio: string) {
     });
 }
 
-/** Paso 1 — «Tu producto». Los campos son los que el usuario completa en el formulario. */
-export const configuracionSchema = z.object({
-  nombre: z.string().trim().min(1, MENSAJES.nombreVacio).max(80, MENSAJES.nombreLargo),
-  unidadVenta: z.string().trim().min(1, MENSAJES.unidadVacia),
-  unidadesPorLote: numeroPositivo(MENSAJES.unidadesVacias),
-  lotes: numeroPositivo(MENSAJES.lotesVacios, { entero: true }),
-});
+/**
+ * Paso 1 — «Tu producto». Los campos son los que el usuario completa en el formulario.
+ * En las rutas «unidad» y «reventa» no se pregunta por las unidades por lote (queda fija en 1).
+ */
+export function crearConfiguracionSchema(ruta: RutaProduccion = "lotes") {
+  return z.object({
+    nombre: z.string().trim().min(1, MENSAJES.nombreVacio).max(80, MENSAJES.nombreLargo),
+    unidadVenta: z.string().trim().min(1, MENSAJES.unidadVacia),
+    unidadesPorLote: ruta === "lotes" ? numeroPositivo(MENSAJES.unidadesVacias) : z.string(),
+    lotes: numeroPositivo(MENSAJES_RUTA[ruta].volumenVacio, { entero: true }),
+  });
+}
+
+export const configuracionSchema = crearConfiguracionSchema("lotes");
 
 export type ConfiguracionFormulario = z.infer<typeof configuracionSchema>;
 
@@ -85,7 +112,7 @@ export function errorDeMonto(valor: string): string | null {
 
 /** Validación del paso 1. Un error por campo (el primero). */
 export function validarConfiguracion(configuracion: Calculo["configuracion"]): ErrorValidacion[] {
-  const resultado = configuracionSchema.safeParse({
+  const resultado = crearConfiguracionSchema(configuracion.ruta).safeParse({
     nombre: configuracion.nombre,
     unidadVenta: configuracion.unidadVenta,
     unidadesPorLote: configuracion.unidadesPorLote,
@@ -145,10 +172,17 @@ export function validarCostos(calculo: Calculo): ErrorValidacion[] {
     ),
   ];
 
-  // Trabajo propio: si completó uno de los dos datos, tiene que completar los dos.
-  const { horasPorLote, valorHora } = calculo.trabajoPropio;
-  if (!estaVacio(horasPorLote) || !estaVacio(valorHora)) {
-    const horas = numeroPositivo(MENSAJES.horasVacias).safeParse(horasPorLote);
+  // Trabajo propio. «Reventa»: un solo dato, el sueldo mensual. Las otras rutas: si completó uno de los dos, el otro también.
+  const { horasPorLote, valorHora, sueldoMensual } = calculo.trabajoPropio;
+  if (calculo.configuracion.ruta === "reventa") {
+    if (!estaVacio(sueldoMensual)) {
+      const sueldo = numeroPositivo(MENSAJES.sueldoVacio).safeParse(sueldoMensual);
+      if (!sueldo.success) {
+        errores.push({ campo: "trabajoPropio.sueldoMensual", mensaje: sueldo.error.issues[0].message, severidad: "error" });
+      }
+    }
+  } else if (!estaVacio(horasPorLote) || !estaVacio(valorHora)) {
+    const horas = numeroPositivo(MENSAJES_RUTA[calculo.configuracion.ruta].horasVacias).safeParse(horasPorLote);
     if (!horas.success) {
       errores.push({ campo: "trabajoPropio.horasPorLote", mensaje: horas.error.issues[0].message, severidad: "error" });
     }

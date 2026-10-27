@@ -14,7 +14,33 @@ import type { CategoriaCosto } from "@/domain/types";
 import { hayErrores, validarConfiguracion, validarCostos } from "@/domain/validaciones";
 import { useHidratado } from "@/hooks/use-hidratado";
 import { formatearCantidad, formatearMonto } from "@/lib/formato";
+import type { RutaProduccion } from "@/domain/types";
 import { useCalculoStore } from "@/store/calculo-store";
+
+/** Textos del trabajo propio según la ruta del paso 1 (en «unidad» y «reventa» las horas son por unidad / por venta). */
+const TEXTOS_TRABAJO: Record<
+  RutaProduccion,
+  { pregunta: string; multiplicador: string; consejo: string; consejoFinal: string }
+> = {
+  lotes: {
+    pregunta: "¿Cuántas horas le dedicás a cada lote?",
+    multiplicador: "lotes",
+    consejo: "por lote",
+    consejoFinal: "por lote",
+  },
+  unidad: {
+    pregunta: "¿Cuántas horas le dedicás a cada unidad?",
+    multiplicador: "unidades",
+    consejo: "por unidad",
+    consejoFinal: "por unidad",
+  },
+  reventa: {
+    pregunta: "¿Qué sueldo fijo querés ganar por mes?",
+    multiplicador: "ventas",
+    consejo: "por venta",
+    consejoFinal: "por venta",
+  },
+};
 
 import { ListaConceptos, type FilaConcepto } from "./lista-conceptos";
 
@@ -78,6 +104,8 @@ function Formulario() {
   const agregarConcepto = useCalculoStore((s) => s.agregarConcepto);
   const eliminarConcepto = useCalculoStore((s) => s.eliminarConcepto);
   const actualizarTrabajoPropio = useCalculoStore((s) => s.actualizarTrabajoPropio);
+  const textosTrabajo = TEXTOS_TRABAJO[calculo.configuracion.ruta];
+  const esReventa = calculo.configuracion.ruta === "reventa";
   const cambiarPaso = useCalculoStore((s) => s.cambiarPaso);
 
   const [pestana, setPestana] = useState<Pestana>("fijos");
@@ -230,9 +258,36 @@ function Formulario() {
               Lo calculamos como costo fijo mensual.
             </Encabezado>
             <div className="flex flex-col gap-5">
+              {esReventa ? (
+                <>
+                  <Campo
+                    idControl="sueldo-mensual"
+                    etiqueta={textosTrabajo.pregunta}
+                    descripcion="Es lo que querés llevarte por tu trabajo, además de cubrir los costos del negocio."
+                    error={mensajeDe("trabajoPropio.sueldoMensual")}
+                    idError="sueldo-mensual-error"
+                  >
+                    <CampoMonto
+                      id="sueldo-mensual"
+                      placeholder="Ej: 300000"
+                      value={trabajoPropio.sueldoMensual}
+                      invalido={Boolean(mensajeDe("trabajoPropio.sueldoMensual"))}
+                      idError="sueldo-mensual-error"
+                      onBlur={() => tocar("trabajoPropio.sueldoMensual")}
+                      onChange={(valor) => actualizarTrabajoPropio({ sueldoMensual: valor })}
+                    />
+                  </Campo>
+                  {tieneTrabajo ? (
+                    <p className="rounded-xl bg-primary-50 px-4 py-3 text-sm text-primary-700" aria-live="polite">
+                      Sueldo mensual esperado = <strong>{formatearMonto(resumen.totalTrabajoPropioMensual)} / mes</strong>
+                    </p>
+                  ) : null}
+                </>
+              ) : (
+                <>
               <Campo
                 idControl="horas-por-lote"
-                etiqueta="¿Cuántas horas le dedicás a cada lote?"
+                etiqueta={textosTrabajo.pregunta}
                 error={mensajeDe("trabajoPropio.horasPorLote")}
                 idError="horas-por-lote-error"
               >
@@ -289,10 +344,12 @@ function Formulario() {
               {tieneTrabajo ? (
                 <p className="rounded-xl bg-primary-50 px-4 py-3 text-sm text-primary-700" aria-live="polite">
                   {formatearCantidad(trabajoPropio.horasPorLote)} hs × {formatearMonto(trabajoPropio.valorHora)}/h ×{" "}
-                  {formatearCantidad(calculo.configuracion.lotes)} lotes ={" "}
+                  {formatearCantidad(calculo.configuracion.lotes)} {textosTrabajo.multiplicador} ={" "}
                   <strong>{formatearMonto(resumen.totalTrabajoPropioMensual)} / mes</strong>
                 </p>
               ) : null}
+                </>
+              )}
               <Subtotal etiqueta="Subtotal trabajo propio" valor={formatearMonto(resumen.totalTrabajoPropioMensual)} />
             </div>
           </Tarjeta>
@@ -340,8 +397,9 @@ function Formulario() {
           </div>
 
           <Aviso tono="consejo">
-            El error más frecuente es no incluir el trabajo propio. Si hacés 4 hs por lote y querés ganar $1.500/hs, eso
-            son $6.000 de costo fijo por lote.
+            {esReventa
+              ? "El error más frecuente es no incluir el trabajo propio. Si querés ganar $300.000 al mes, ese monto va como costo fijo y se reparte entre todas tus ventas."
+              : `El error más frecuente es no incluir el trabajo propio. Si hacés 4 hs ${textosTrabajo.consejo} y querés ganar $1.500/hs, eso son $6.000 de costo fijo ${textosTrabajo.consejoFinal}.`}
           </Aviso>
           {advertenciaDe("costosFijos") ? <Aviso tono="advertencia">{advertenciaDe("costosFijos")}</Aviso> : null}
         </div>
@@ -353,25 +411,37 @@ function Formulario() {
               ayuda={
                 <Ayuda
                   sobre="costos variables"
-                  texto="Son los gastos que cambian según cuánto produzcas: materiales, insumos, envases."
-                  ejemplo="la harina, la caja, la etiqueta. Todo lo que se usa por cada unidad que fabricás."
+                  texto={
+                    esReventa
+                      ? "Son los gastos que cambian según cuánto vendas: lo que pagás por cada producto y su packaging."
+                      : "Son los gastos que cambian según cuánto produzcas: materiales, insumos, envases."
+                  }
+                  ejemplo={
+                    esReventa
+                      ? "el precio de compra mayorista de cada termo y la bolsa o caja con la que lo entregás."
+                      : "la harina, la caja, la etiqueta. Todo lo que se usa por cada unidad que fabricás."
+                  }
                 />
               }
             >
-              La harina, la caja, la etiqueta — todo lo que se usa en cada unidad.
+              {esReventa
+                ? "El precio de compra mayorista y el packaging de cada unidad que revendés."
+                : "La harina, la caja, la etiqueta — todo lo que se usa en cada unidad."}
             </Encabezado>
             <div className="mb-4">
               <Aviso tono="consejo">
-                Si una bolsa de harina alcanza para 4 tortas y cuesta $240, poné $60 por unidad.
+                {esReventa
+                  ? "Si comprás una caja de 12 termos a $96.000, el precio de compra por unidad es $8.000. Sumá el packaging de cada uno."
+                  : "Si una bolsa de harina alcanza para 4 tortas y cuesta $240, poné $60 por unidad."}
               </Aviso>
             </div>
             <ListaConceptos
               idBase="variables"
               filas={filasVariables}
-              nombreFila="insumo"
-              placeholderNombre="Ej: Materia prima"
-              placeholderValor="85"
-              etiquetaAgregar="Agregar insumo o material"
+              nombreFila={esReventa ? "costo de compra" : "insumo"}
+              placeholderNombre={esReventa ? "Ej: Precio de compra mayorista" : "Ej: Materia prima"}
+              placeholderValor={esReventa ? "8000" : "85"}
+              etiquetaAgregar={esReventa ? "Agregar precio de compra o packaging" : "Agregar insumo o material"}
               onCambiar={cambiar("variable")}
               onEliminar={(id) => eliminarConcepto("variable", id)}
               onAgregar={agregar("variable", filasVariables)}

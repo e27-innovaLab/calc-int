@@ -88,7 +88,7 @@ const DESCUIDOS = [
 ];
 
 const PASOS = [
-  { icono: ICONOS.etiqueta, titulo: "Tu producto", texto: "Nombre y volumen" },
+  { icono: ICONOS.etiqueta, titulo: "Tu producto", texto: "Ruta y volumen" },
   { icono: ICONOS.billete, titulo: "Costos", texto: "Fijos y variables" },
   { icono: ICONOS.lista, titulo: "Resumen", texto: "Tu costo real" },
   { icono: ICONOS.objetivo, titulo: "Precio", texto: "Margen y equilibrio" },

@@ -63,7 +63,7 @@ export interface ResumenCostos {
   totalGastosFijosMensual: DecimalString;
   /** Otros costos indirectos, tratados como fijos del mes. */
   totalIndirectosMensual: DecimalString;
-  /** Valor del tiempo propio por mes (horas mensuales × valor por hora). */
+  /** Valor del tiempo propio por mes (horas mensuales × valor por hora, o el sueldo mensual en «reventa»). */
   totalTrabajoPropioMensual: DecimalString;
   /** Gastos fijos + indirectos + trabajo propio. */
   costoFijoTotalMensual: DecimalString;
@@ -86,14 +86,24 @@ type EntradaResumen = Pick<
   "configuracion" | "costosFijos" | "costosVariables" | "costosIndirectos" | "trabajoPropio"
 >;
 
+/**
+ * Valor del tiempo propio por mes.
+ * - «lotes» y «unidad»: horas mensuales × valor por hora.
+ * - «reventa» (Alternativa 2 de Data): el sueldo mensual que quiere ganar, directo y sin multiplicar por el volumen.
+ */
+export function trabajoPropioMensual(calculo: EntradaResumen): Decimal {
+  const { trabajoPropio, configuracion } = calculo;
+  if (!trabajoPropio.incluir) return CERO;
+  return configuracion.ruta === "reventa"
+    ? importeValido(trabajoPropio.sueldoMensual)
+    : importeValido(trabajoPropio.horasMensuales).times(importeValido(trabajoPropio.valorHora));
+}
+
 export function calcularResumenCostos(calculo: EntradaResumen): ResumenCostos {
   const gastosFijos = sumarPorPeriodo(calculo.costosFijos);
   const indirectos = sumarPorPeriodo(calculo.costosIndirectos);
 
-  const { trabajoPropio } = calculo;
-  const trabajo = trabajoPropio.incluir
-    ? importeValido(trabajoPropio.horasMensuales).times(importeValido(trabajoPropio.valorHora))
-    : CERO;
+  const trabajo = trabajoPropioMensual(calculo);
 
   const costoFijoTotal = gastosFijos.plus(indirectos).plus(trabajo);
   const cvu = sumarVariables(calculo.costosVariables);
