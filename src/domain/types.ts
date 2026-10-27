@@ -89,13 +89,25 @@ export interface CostoFijo extends ConceptoPorPeriodo {
 }
 
 /**
+ * Base en la que el usuario cargó el monto de un insumo.
+ * - `unidad`: lo que cuesta ese insumo para una unidad terminada (se usa tal cual).
+ * - `lote`: lo que cuesta ese insumo para todo el lote (ruta «lotes»); el motor lo divide por las unidades del lote.
+ */
+export type BaseInsumo = "unidad" | "lote";
+
+/**
  * Insumo directamente atribuible a cada unidad vendida. Ej: harina, envase.
  * Es el único costo con base por unidad.
  */
 export interface CostoVariable extends ConceptoBase {
   categoria: "variable";
-  /** Costo por cada unidad de venta. */
+  /**
+   * Monto del insumo, en la base indicada por `base` (por unidad si no se indica). Se llama «unitario» por la
+   * base habitual; para obtener el costo por unidad siempre usar `costoVariableUnitarioDe` (motor/costos.ts).
+   */
   montoUnitario: DecimalString;
+  /** Base del monto. Solo la ruta «lotes» admite `lote`; en las demás se ignora. */
+  base?: BaseInsumo;
 }
 
 /**

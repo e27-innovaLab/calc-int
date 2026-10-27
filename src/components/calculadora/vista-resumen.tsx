@@ -225,7 +225,14 @@ function BloqueDetalle({ titulo, lineas }: { titulo: string; lineas: LineaDetall
       <ul className="mt-2 divide-y divide-gray-100 text-sm">
         {lineas.map((l) => (
           <li key={l.id} className="flex items-baseline justify-between gap-3 py-2 text-gray-700">
-            <span>{l.nombre}</span>
+            <span>
+              {l.nombre}
+              {l.porLote ? (
+                <span className="block text-xs text-gray-500">
+                  {formatearMonto(l.porLote.montoLote)} por lote ÷ {formatearCantidad(l.porLote.unidadesPorLote)} unidades
+                </span>
+              ) : null}
+            </span>
             <span>{formatearMonto(l.monto)}</span>
           </li>
         ))}

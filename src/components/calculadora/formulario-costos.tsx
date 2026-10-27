@@ -9,7 +9,7 @@ import { Boton, BotonLink } from "@/components/ui/boton";
 import { Campo } from "@/components/ui/campo";
 import { CampoMonto } from "@/components/ui/campo-monto";
 import { Tarjeta } from "@/components/ui/tarjeta";
-import { calcularResumenCostos } from "@/domain/motor/costos";
+import { calcularResumenCostos, costoVariableUnitarioDe, insumoSeCargaPorLote } from "@/domain/motor/costos";
 import type { CategoriaCosto } from "@/domain/types";
 import { hayErrores, validarConfiguracion, validarCostos } from "@/domain/validaciones";
 import { useHidratado } from "@/hooks/use-hidratado";
@@ -106,6 +106,7 @@ function Formulario() {
   const actualizarTrabajoPropio = useCalculoStore((s) => s.actualizarTrabajoPropio);
   const textosTrabajo = TEXTOS_TRABAJO[calculo.configuracion.ruta];
   const esReventa = calculo.configuracion.ruta === "reventa";
+  const esLotes = calculo.configuracion.ruta === "lotes";
   const cambiarPaso = useCalculoStore((s) => s.cambiarPaso);
 
   const [pestana, setPestana] = useState<Pestana>("fijos");
@@ -128,11 +129,20 @@ function Formulario() {
   // --- listas de conceptos ---
   const filasFijas: FilaConcepto[] = calculo.costosFijos.map((c) => ({ id: c.id, nombre: c.nombre, valor: c.monto }));
   const filasIndirectas: FilaConcepto[] = calculo.costosIndirectos.map((c) => ({ id: c.id, nombre: c.nombre, valor: c.monto }));
-  const filasVariables: FilaConcepto[] = calculo.costosVariables.map((c) => ({
-    id: c.id,
-    nombre: c.nombre,
-    valor: c.montoUnitario,
-  }));
+  const filasVariables: FilaConcepto[] = calculo.costosVariables.map((c) => {
+    const fila: FilaConcepto = { id: c.id, nombre: c.nombre, valor: c.montoUnitario };
+    if (!esLotes) return fila;
+    fila.base = c.base ?? "unidad";
+    if (insumoSeCargaPorLote(c, calculo.configuracion.ruta)) {
+      const porUnidad = costoVariableUnitarioDe(c, calculo.configuracion);
+      fila.equivalente = !c.montoUnitario.trim()
+        ? undefined
+        : porUnidad
+          ? `= ${formatearMonto(porUnidad.toString())} por unidad (÷ ${formatearCantidad(calculo.configuracion.unidadesPorLote)})`
+          : "Completá las unidades por lote en «Tu producto» para dividirlo.";
+    }
+    return fila;
+  });
 
   const cambiar = (categoria: CategoriaCosto) => (id: string, cambios: { nombre?: string; valor?: string }) =>
     actualizarConcepto(categoria, id, {
@@ -432,7 +442,9 @@ function Formulario() {
               <Aviso tono="consejo">
                 {esReventa
                   ? "Si comprás una caja de 12 termos a $96.000, el precio de compra por unidad es $8.000. Sumá el packaging de cada uno."
-                  : "Si una bolsa de harina alcanza para 4 tortas y cuesta $240, poné $60 por unidad."}
+                  : esLotes
+                    ? "Podés cargar cada insumo por unidad o por lote completo. Si para un lote de 20 velas gastás $20.000 en cera, elegí «por lote completo» y lo dividimos por las 20 unidades: $1.000 por vela."
+                    : "Si una bolsa de harina alcanza para 4 tortas y cuesta $240, poné $60 por unidad."}
               </Aviso>
             </div>
             <ListaConceptos
@@ -443,6 +455,7 @@ function Formulario() {
               placeholderValor={esReventa ? "8000" : "85"}
               etiquetaAgregar={esReventa ? "Agregar precio de compra o packaging" : "Agregar insumo o material"}
               onCambiar={cambiar("variable")}
+              onCambiarBase={esLotes ? (id, base) => actualizarConcepto("variable", id, { base }) : undefined}
               onEliminar={(id) => eliminarConcepto("variable", id)}
               onAgregar={agregar("variable", filasVariables)}
               errorDe={errorFila("costosVariables", "montoUnitario")}
