@@ -26,6 +26,7 @@ const MENSAJES = {
   montoNegativo: "El monto no puede ser negativo.",
   conceptoSinNombre: "Poné un nombre para este concepto.",
   horasVacias: "Indicá cuántas horas le dedicás a cada lote.",
+  horasNegativas: "Las horas no pueden ser negativas.",
   valorHoraVacio: "Indicá cuánto querés ganar por hora.",
   sueldoVacio: "Indicá cuánto querés ganar por mes.",
 } as const;
@@ -69,7 +70,7 @@ function numeroPositivo(mensajeVacio: string, { entero = false }: { entero?: boo
 }
 
 /** Importe ≥ 0. */
-function montoNoNegativo(mensajeVacio: string) {
+function montoNoNegativo(mensajeVacio: string, mensajeNegativo: string = MENSAJES.montoNegativo) {
   return z
     .string()
     .trim()
@@ -80,7 +81,7 @@ function montoNoNegativo(mensajeVacio: string) {
       if (!n) {
         ctx.addIssue({ code: "custom", message: MENSAJES.noEsNumero });
       } else if (n.isNegative()) {
-        ctx.addIssue({ code: "custom", message: MENSAJES.montoNegativo });
+        ctx.addIssue({ code: "custom", message: mensajeNegativo });
       }
     });
 }
@@ -176,13 +177,17 @@ export function validarCostos(calculo: Calculo): ErrorValidacion[] {
   const { horasPorLote, valorHora, sueldoMensual } = calculo.trabajoPropio;
   if (calculo.configuracion.ruta === "reventa") {
     if (!estaVacio(sueldoMensual)) {
-      const sueldo = numeroPositivo(MENSAJES.sueldoVacio).safeParse(sueldoMensual);
+      // El sueldo pretendido puede ser cero (el MVP pide mayor o igual a cero).
+      const sueldo = montoNoNegativo(MENSAJES.sueldoVacio).safeParse(sueldoMensual);
       if (!sueldo.success) {
         errores.push({ campo: "trabajoPropio.sueldoMensual", mensaje: sueldo.error.issues[0].message, severidad: "error" });
       }
     }
   } else if (!estaVacio(horasPorLote) || !estaVacio(valorHora)) {
-    const horas = numeroPositivo(MENSAJES_RUTA[calculo.configuracion.ruta].horasVacias).safeParse(horasPorLote);
+    // Las horas no pueden ser negativas; cero es válido.
+    const horas = montoNoNegativo(MENSAJES_RUTA[calculo.configuracion.ruta].horasVacias, MENSAJES.horasNegativas).safeParse(
+      horasPorLote,
+    );
     if (!horas.success) {
       errores.push({ campo: "trabajoPropio.horasPorLote", mensaje: horas.error.issues[0].message, severidad: "error" });
     }

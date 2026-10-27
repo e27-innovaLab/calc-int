@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, type KeyboardEvent, type ReactNode } from "react";
+import { useEffect, useRef, type KeyboardEvent, type ReactNode } from "react";
 
 import { RUTAS_PRODUCCION, type RutaProduccion } from "@/domain/types";
 
@@ -68,14 +68,25 @@ interface Props {
 export function SelectorRuta({ valor, onChange }: Props) {
   const botones = useRef<Record<RutaProduccion, HTMLButtonElement | null>>({ lotes: null, unidad: null, reventa: null });
 
+  // El foco acompaña a la opción elegida y no a la que se intentó elegir: si el cambio pide confirmación y se cancela,
+  // `valor` no cambia y el foco se queda en la opción marcada (si no, un lector de pantalla anunciaría otra opción).
+  const moverFoco = useRef(false);
+  // Se difiere un cuadro porque el diálogo de confirmación, al cerrarse, devuelve el foco al elemento que tenía antes.
+  useEffect(() => {
+    if (!moverFoco.current) return;
+    moverFoco.current = false;
+    const cuadro = requestAnimationFrame(() => botones.current[valor]?.focus());
+    return () => cancelAnimationFrame(cuadro);
+  }, [valor]);
+
   function alTeclear(evento: KeyboardEvent<HTMLButtonElement>) {
     const avance = evento.key === "ArrowRight" || evento.key === "ArrowDown" ? 1 : evento.key === "ArrowLeft" || evento.key === "ArrowUp" ? -1 : 0;
     if (avance === 0) return;
     evento.preventDefault();
     const posicion = RUTAS_PRODUCCION.indexOf(valor);
     const siguiente = RUTAS_PRODUCCION[(posicion + avance + RUTAS_PRODUCCION.length) % RUTAS_PRODUCCION.length];
+    moverFoco.current = true;
     onChange(siguiente);
-    botones.current[siguiente]?.focus();
   }
 
   return (
@@ -93,7 +104,10 @@ export function SelectorRuta({ valor, onChange }: Props) {
             role="radio"
             aria-checked={elegida}
             tabIndex={elegida ? 0 : -1}
-            onClick={() => onChange(ruta)}
+            onClick={() => {
+              moverFoco.current = false;
+              onChange(ruta);
+            }}
             onKeyDown={alTeclear}
             className={`relative flex min-h-11 flex-col items-start gap-2 rounded-xl border-2 p-4 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 ${
               elegida

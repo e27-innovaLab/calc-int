@@ -326,7 +326,7 @@ function Formulario() {
                   aria-expanded={comoCalculo}
                   aria-controls="como-lo-calculo"
                   onClick={() => setComoCalculo((v) => !v)}
-                  className="text-sm font-semibold text-primary-700 underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-primary-600"
+                  className="relative text-sm font-semibold text-primary-700 underline-offset-2 before:absolute before:inset-x-0 before:-inset-y-3 before:content-[''] hover:underline focus-visible:outline-2 focus-visible:outline-primary-600"
                 >
                   {comoCalculo ? "▲" : "▼"} ¿Cómo lo calculo?
                 </button>

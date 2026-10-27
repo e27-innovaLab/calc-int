@@ -325,7 +325,7 @@ function ControlVariacion({
         value={numero}
         aria-valuetext={`${signo}${numero} por ciento`}
         onChange={(e) => onCambiar(e.target.value)}
-        className="mt-2 h-2 w-full cursor-pointer accent-primary-600"
+        className="mt-1 h-6 w-full cursor-pointer accent-primary-600"
       />
       <div className="mt-1 flex justify-between text-xs text-gray-500" aria-hidden="true">
         <span>{VARIACION_MINIMA_PCT}%</span>

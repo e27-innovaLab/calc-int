@@ -163,15 +163,42 @@ describe("calcularResumenCostos — bordes", () => {
     }
   });
 
-  it("ignora montos inválidos o negativos (los informa la validación)", () => {
+  it("con un monto inválido o negativo no entrega costo unitario y lo avisa (nunca lo reemplaza por cero en silencio)", () => {
     const r = calcularResumenCostos(
       calculo({
         costosFijos: [fijo("Alquiler", "1000"), fijo("Roto", "abc"), fijo("Negativo", "-500"), fijo("Vacío", "")],
         costosVariables: [variable("Harina", "50"), variable("Malo", "x")],
       }),
     );
+    expect(r.tieneImportesInvalidos).toBe(true);
+    expect(r.costoUnitario).toBeNull();
+    expect(r.costoTotalMensual).toBeNull();
+    // Los subtotales parciales siguen mostrando solo lo válido.
     expect(r.totalGastosFijosMensual).toBe("1000");
     expect(r.costoVariableUnitario).toBe("50");
+  });
+
+  it("los vacíos no son inválidos y sin importes inválidos se calcula igual", () => {
+    const r = calcularResumenCostos(
+      calculo({
+        configuracion: { ...CONFIGURACION_INICIAL, volumenMensual: "10" },
+        costosFijos: [fijo("Alquiler", "1000"), fijo("Vacío", "")],
+        costosVariables: [variable("Harina", "50")],
+      }),
+    );
+    expect(r.tieneImportesInvalidos).toBe(false);
+    expect(r.costoUnitario).toBe("150");
+  });
+
+  it("la ruta elegida decide qué datos de trabajo se miran: en «reventa» las horas viejas no cuentan", () => {
+    const base = calculo({
+      configuracion: { ...CONFIGURACION_INICIAL, ruta: "reventa", volumenMensual: "10" },
+      trabajoPropio: { incluir: true, horasPorLote: "abc", horasMensuales: "", valorHora: "", sueldoMensual: "1000" },
+    });
+    expect(calcularResumenCostos(base).tieneImportesInvalidos).toBe(false);
+    expect(
+      calcularResumenCostos({ ...base, configuracion: { ...base.configuracion, ruta: "unidad" } }).tieneImportesInvalidos,
+    ).toBe(true);
   });
 
   it("normaliza la frecuencia a mensual (semanal × 4, anual ÷ 12)", () => {

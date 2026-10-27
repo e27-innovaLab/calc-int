@@ -30,6 +30,12 @@ export function formatearCantidad(valor: string | null | undefined): string {
   return formateador.format(numero.toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toNumber());
 }
 
+/** Une elementos en una enumeración en castellano: ["a"] → "a"; ["a", "b"] → "a y b"; ["a", "b", "c"] → "a, b y c". */
+export function unirEnLista(elementos: string[]): string {
+  if (elementos.length <= 1) return elementos.join("");
+  return `${elementos.slice(0, -1).join(", ")} y ${elementos[elementos.length - 1]}`;
+}
+
 const formateadorPorcentaje = new Intl.NumberFormat("es-AR", {
   minimumFractionDigits: 1,
   maximumFractionDigits: 1,

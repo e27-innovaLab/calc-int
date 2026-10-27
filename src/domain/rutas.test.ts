@@ -5,6 +5,7 @@ import {
   actualizarTrabajoPropio,
   cambiarRuta,
   crearCalculoInicial,
+  datosQueSePierdenAlCambiarRuta,
 } from "./calculo";
 import { calcularResumenCostos } from "./motor/costos";
 import { MENSAJES_RUTA, validarConfiguracion, validarCostos } from "./validaciones";
@@ -133,7 +134,61 @@ describe("validaciones según la ruta", () => {
     c = actualizarTrabajoPropio(c, { sueldoMensual: "300000" }, AHORA);
     expect(validarCostos(c).filter((e) => e.campo.startsWith("trabajoPropio"))).toEqual([]);
 
+    // El sueldo pretendido puede ser cero; negativo o con letras no.
     c = actualizarTrabajoPropio(c, { sueldoMensual: "0" }, AHORA);
-    expect(validarCostos(c).map((e) => e.campo)).toContain("trabajoPropio.sueldoMensual");
+    expect(validarCostos(c).map((e) => e.campo)).not.toContain("trabajoPropio.sueldoMensual");
+    for (const invalido of ["-1", "abc"]) {
+      const malo = actualizarTrabajoPropio(c, { sueldoMensual: invalido }, AHORA);
+      expect(validarCostos(malo).map((e) => e.campo)).toContain("trabajoPropio.sueldoMensual");
+    }
+  });
+});
+
+describe("horas de trabajo: cero es válido, negativo no", () => {
+  it("en «lotes» y «unidad»", () => {
+    for (const ruta of ["lotes", "unidad"] as const) {
+      let c = cambiarRuta(crearCalculoInicial(), ruta, AHORA);
+      c = actualizarTrabajoPropio(c, { horasPorLote: "0", valorHora: "1000" }, AHORA);
+      expect(validarCostos(c).map((e) => e.campo)).not.toContain("trabajoPropio.horasPorLote");
+      c = actualizarTrabajoPropio(c, { horasPorLote: "-2" }, AHORA);
+      expect(validarCostos(c)).toContainEqual(
+        expect.objectContaining({ campo: "trabajoPropio.horasPorLote", mensaje: "Las horas no pueden ser negativas." }),
+      );
+    }
+  });
+});
+
+describe("datosQueSePierdenAlCambiarRuta", () => {
+  it("sin nada cargado no se pierde nada", () => {
+    for (const ruta of ["unidad", "reventa"] as const) {
+      expect(datosQueSePierdenAlCambiarRuta(crearCalculoInicial(), ruta)).toEqual([]);
+    }
+  });
+
+  it("de «lotes» a una ruta directa avisa las unidades por lote, los lotes y las horas ya cargados", () => {
+    let c = actualizarConfiguracion(crearCalculoInicial(), { unidadesPorLote: "24", lotes: "2" }, AHORA);
+    c = actualizarTrabajoPropio(c, { horasPorLote: "4" }, AHORA);
+    expect(datosQueSePierdenAlCambiarRuta(c, "unidad")).toEqual([
+      "las unidades por lote",
+      "los lotes por mes",
+      "las horas de trabajo",
+    ]);
+  });
+
+  it("«1» lote es el valor inicial: no se avisa como dato cargado", () => {
+    const c = actualizarConfiguracion(crearCalculoInicial(), { unidadesPorLote: "24" }, AHORA);
+    expect(datosQueSePierdenAlCambiarRuta(c, "reventa")).toEqual(["las unidades por lote"]);
+  });
+
+  it("de una ruta directa a «lotes» avisa las unidades por mes; entre directas se conserva", () => {
+    let c = cambiarRuta(crearCalculoInicial(), "unidad", AHORA);
+    c = actualizarConfiguracion(c, { lotes: "80" }, AHORA);
+    expect(datosQueSePierdenAlCambiarRuta(c, "lotes")).toEqual(["las unidades por mes"]);
+    expect(datosQueSePierdenAlCambiarRuta(c, "reventa")).toEqual([]);
+  });
+
+  it("cambiar a la misma ruta no pierde nada", () => {
+    const c = actualizarConfiguracion(crearCalculoInicial(), { unidadesPorLote: "24", lotes: "2" }, AHORA);
+    expect(datosQueSePierdenAlCambiarRuta(c, "lotes")).toEqual([]);
   });
 });
