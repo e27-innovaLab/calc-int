@@ -26,7 +26,7 @@ const trazo = {
 export const OPCIONES_RUTA: Record<RutaProduccion, OpcionRuta> = {
   lotes: {
     titulo: "Por lotes/tandas",
-    descripcion: "Producís en cantidad durante un mismo proceso u horneada. Por ejemplo: pastelería, velas o cerámica.",
+    descripcion: "Producís en cantidad durante un mismo proceso u horneada. Por ejemplo: pastelería, velas, cerámica o impresión 3D.",
     icono: (
       <svg {...trazo}>
         <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
@@ -36,7 +36,7 @@ export const OPCIONES_RUTA: Record<RutaProduccion, OpcionRuta> = {
   },
   unidad: {
     titulo: "Por unidad a medida",
-    descripcion: "Diseñás, armás o construís cada producto de forma individual y exclusiva.",
+    descripcion: "Diseñás, armás o construís cada producto de forma individual y exclusiva. Por ejemplo: carpintería a medida, joyería fina o alta costura.",
     icono: (
       <svg {...trazo}>
         <path d="m3 17 6-6 4 4 8-8" />
@@ -46,7 +46,7 @@ export const OPCIONES_RUTA: Record<RutaProduccion, OpcionRuta> = {
   },
   reventa: {
     titulo: "Compro y revendo",
-    descripcion: "Comprás productos ya terminados para comercializarlos, sin fabricarlos.",
+    descripcion: "Comprás productos ya terminados para comercializarlos, sin fabricarlos. Por ejemplo: bazar, tecnología o indumentaria mayorista.",
     icono: (
       <svg {...trazo}>
         <path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z" />
