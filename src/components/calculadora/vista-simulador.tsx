@@ -36,6 +36,16 @@ function Esqueleto() {
   );
 }
 
+/** Un campo vacío cuenta como «sin cambio» al simular. */
+const comoPct = (valor: string) => (valor.trim() === "" ? "0" : valor);
+
+/** Deja el valor escrito dentro del rango permitido. Vacío o inválido pasa a «0». */
+function limitarPct(valor: string): string {
+  const n = Number(valor);
+  if (valor.trim() === "" || Number.isNaN(n)) return "0";
+  return String(Math.min(Math.max(n, VARIACION_MINIMA_PCT), VARIACION_MAXIMA_PCT));
+}
+
 /** Paso 5 — «Simulador de escenarios» (Vista 5 del diseño). */
 export function VistaSimulador() {
   const hidratado = useHidratado();
@@ -70,7 +80,11 @@ function Simulador() {
   const resultados = new Map(
     escenarios.map((e) => [
       e.id,
-      simularVariaciones(calculo, precio, { insumosPct: e.insumosPct, precioPct: e.precioPct, produccionPct: e.produccionPct }),
+      simularVariaciones(calculo, precio, {
+        insumosPct: comoPct(e.insumosPct),
+        precioPct: comoPct(e.precioPct),
+        produccionPct: comoPct(e.produccionPct),
+      }),
     ]),
   );
   const paraComparar: EscenarioConResultado[] = escenarios.flatMap((escenario) => {
@@ -302,19 +316,35 @@ function ControlVariacion({
   valor: string;
   onCambiar: (valor: string) => void;
 }) {
-  const numero = Number(valor);
+  const numero = Number(valor) || 0;
   const signo = numero > 0 ? "+" : "";
 
   return (
     <div>
-      <div className="flex items-baseline justify-between gap-2 text-sm">
+      <div className="flex items-center justify-between gap-2 text-sm">
         <label htmlFor={id} className="text-gray-700">
           {etiqueta}
         </label>
-        <output htmlFor={id} className="font-semibold text-primary-600">
-          {signo}
-          {numero}%
-        </output>
+        <div className="flex items-center gap-1">
+          <input
+            type="number"
+            inputMode="decimal"
+            aria-label={`${etiqueta}, valor exacto en porcentaje`}
+            min={VARIACION_MINIMA_PCT}
+            max={VARIACION_MAXIMA_PCT}
+            step={1}
+            value={valor}
+            onChange={(e) => onCambiar(e.target.value)}
+            onBlur={() => {
+              const limpio = limitarPct(valor);
+              if (limpio !== valor) onCambiar(limpio);
+            }}
+            className="w-20 rounded-lg border border-gray-300 px-2 py-1 text-right font-semibold text-primary-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600"
+          />
+          <span aria-hidden="true" className="font-semibold text-primary-600">
+            %
+          </span>
+        </div>
       </div>
       <input
         id={id}
