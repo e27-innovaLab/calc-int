@@ -7,6 +7,7 @@ import { Aviso } from "@/components/ui/aviso";
 import { Boton, BotonLink } from "@/components/ui/boton";
 import { DialogoConfirmar } from "@/components/ui/dialogo-confirmar";
 import { Tarjeta } from "@/components/ui/tarjeta";
+import { BotonGuardar } from "@/components/calculadora/boton-guardar";
 import type { CambiosEscenario } from "@/domain/calculo";
 import {
   metaDeVentas,
@@ -152,6 +153,8 @@ function Simulador() {
         </BotonLink>
         <Boton onClick={() => setConfirmandoReinicio(true)}>Calcular otro producto</Boton>
       </div>
+
+      <BotonGuardar />
 
       <DialogoConfirmar
         abierto={escenarioAEliminar !== null}
