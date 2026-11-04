@@ -71,6 +71,7 @@ export function Recorrido({ children }: { children: ReactNode }) {
       <Cabecera
         centro={<Pasos />}
         derecha={
+<<<<<<< HEAD
           <div className="flex items-center gap-2">
             <MenuUsuario />
             {hidratado ? (
@@ -80,6 +81,14 @@ export function Recorrido({ children }: { children: ReactNode }) {
               </>
             ) : null}
           </div>
+=======
+          hidratado ? (
+            <div className="flex items-center gap-2">
+              <NombreDelProducto />
+              <BotonReiniciar alReiniciar={() => setVersion((v) => v + 1)} />
+            </div>
+          ) : null
+>>>>>>> origin/main
         }
       />
       <div

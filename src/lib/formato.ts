@@ -30,6 +30,12 @@ export function formatearCantidad(valor: string | null | undefined): string {
   return formateador.format(numero.toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toNumber());
 }
 
+/** Une elementos en una enumeración en castellano: ["a"] → "a"; ["a", "b"] → "a y b"; ["a", "b", "c"] → "a, b y c". */
+export function unirEnLista(elementos: string[]): string {
+  if (elementos.length <= 1) return elementos.join("");
+  return `${elementos.slice(0, -1).join(", ")} y ${elementos[elementos.length - 1]}`;
+}
+
 const formateadorPorcentaje = new Intl.NumberFormat("es-AR", {
   minimumFractionDigits: 1,
   maximumFractionDigits: 1,
@@ -51,4 +57,35 @@ export function formatearVariacion(valor: string | null | undefined): string {
   const texto = formatearPorcentaje(numero.abs().toString());
   if (texto === "0,0%") return texto;
   return `${numero.isNegative() ? "-" : "+"}${texto}`;
+}
+
+/** Diferencia de importe con signo: "460" -> "+$460", "-85" -> "-$85", "0" -> "$0". */
+export function formatearDiferenciaMonto(valor: string | null | undefined): string {
+  if (valor == null) return "—";
+  const numero = leerNumero(valor);
+  if (!numero) return "—";
+  const redondeado = numero.toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
+  if (redondeado.isZero()) return "$0";
+  return `${redondeado.isNegative() ? "-" : "+"}$${formateador.format(redondeado.abs().toNumber())}`;
+}
+
+/** Diferencia de unidades con signo: "63" -> "+63 uds", "-16" -> "-16 uds", "1" -> "+1 ud". */
+export function formatearDiferenciaUnidades(valor: string | null | undefined): string {
+  if (valor == null) return "—";
+  const numero = leerNumero(valor);
+  if (!numero) return "—";
+  const redondeado = numero.toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
+  if (redondeado.isZero()) return "0 uds";
+  const texto = formateador.format(redondeado.abs().toNumber());
+  return `${redondeado.isNegative() ? "-" : "+"}${texto} ${redondeado.abs().equals(1) ? "ud" : "uds"}`;
+}
+
+/** Diferencia en puntos porcentuales con signo: "15.2" -> "+15,2 pts", "-23.7" -> "-23,7 pts". */
+export function formatearDiferenciaPuntos(valor: string | null | undefined): string {
+  if (valor == null) return "—";
+  const numero = leerNumero(valor);
+  if (!numero) return "—";
+  const redondeado = numero.toDecimalPlaces(1, Decimal.ROUND_HALF_UP);
+  if (redondeado.isZero()) return "0,0 pts";
+  return `${redondeado.isNegative() ? "-" : "+"}${formateadorPorcentaje.format(redondeado.abs().toNumber())} pts`;
 }

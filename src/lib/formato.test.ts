@@ -1,6 +1,30 @@
 import { describe, expect, it } from "vitest";
 
-import { formatearCantidad, formatearMonto } from "./formato";
+import {
+  formatearCantidad,
+  formatearDiferenciaMonto,
+  formatearDiferenciaPuntos,
+  formatearDiferenciaUnidades,
+  formatearMonto,
+  unirEnLista,
+} from "./formato";
+
+describe("unirEnLista", () => {
+  it("un solo elemento queda tal cual y una lista vacía queda vacía", () => {
+    expect(unirEnLista(["las horas de trabajo"])).toBe("las horas de trabajo");
+    expect(unirEnLista([])).toBe("");
+  });
+
+  it("dos elementos van unidos con «y»", () => {
+    expect(unirEnLista(["las unidades por lote", "las horas de trabajo"])).toBe("las unidades por lote y las horas de trabajo");
+  });
+
+  it("tres o más van separados por comas y el último con «y»", () => {
+    expect(unirEnLista(["las unidades por lote", "los lotes por mes", "las horas de trabajo"])).toBe(
+      "las unidades por lote, los lotes por mes y las horas de trabajo",
+    );
+  });
+});
 
 describe("formatearMonto", () => {
   it("enteros con punto de miles, sin decimales", () => {
@@ -35,5 +59,30 @@ describe("formatearCantidad", () => {
 
   it("inválido muestra un guion", () => {
     expect(formatearCantidad("")).toBe("—");
+  });
+});
+
+describe("diferencias con signo", () => {
+  it("importes: signo antes del símbolo", () => {
+    expect(formatearDiferenciaMonto("460")).toBe("+$460");
+    expect(formatearDiferenciaMonto("-85")).toBe("-$85");
+    expect(formatearDiferenciaMonto("238000")).toBe("+$238.000");
+    expect(formatearDiferenciaMonto("0")).toBe("$0");
+    expect(formatearDiferenciaMonto(null)).toBe("—");
+  });
+
+  it("unidades: singular y plural", () => {
+    expect(formatearDiferenciaUnidades("63")).toBe("+63 uds");
+    expect(formatearDiferenciaUnidades("-16")).toBe("-16 uds");
+    expect(formatearDiferenciaUnidades("1")).toBe("+1 ud");
+    expect(formatearDiferenciaUnidades("0")).toBe("0 uds");
+    expect(formatearDiferenciaUnidades("abc")).toBe("—");
+  });
+
+  it("puntos porcentuales con un decimal", () => {
+    expect(formatearDiferenciaPuntos("15.2")).toBe("+15,2 pts");
+    expect(formatearDiferenciaPuntos("-23.74")).toBe("-23,7 pts");
+    expect(formatearDiferenciaPuntos("0.01")).toBe("0,0 pts");
+    expect(formatearDiferenciaPuntos(undefined)).toBe("—");
   });
 });

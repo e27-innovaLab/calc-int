@@ -2,7 +2,14 @@ import Decimal from "decimal.js";
 
 import type { Calculo, DecimalString } from "@/domain/types";
 
-import { calcularResumenCostos, importeValido, montoMensual } from "./costos";
+import {
+  calcularResumenCostos,
+  costoVariableUnitarioDe,
+  importeValido,
+  insumoSeCargaPorLote,
+  montoMensual,
+  trabajoPropioMensual,
+} from "./costos";
 import { aDecimalString } from "./decimal";
 import { leerNumero } from "./numeros";
 
@@ -79,9 +86,13 @@ export interface LineaDetalle {
   id: string;
   nombre: string;
   monto: DecimalString;
+  /** Insumo cargado por lote: `monto` ya es por unidad (monto del lote ÷ unidades por lote); acá queda el origen. */
+  porLote?: { montoLote: DecimalString; unidadesPorLote: DecimalString };
 }
 
 export interface DetalleTrabajoPropio {
+  /** Ruta «reventa»: es el sueldo mensual directo y no hay horas ni lotes que mostrar. */
+  sueldoDirecto: boolean;
   horasPorLote: DecimalString;
   valorHora: DecimalString;
   lotes: DecimalString;
@@ -116,18 +127,30 @@ export function detalleDeCostos(calculo: EntradaResumen): DetalleCostos {
     }))
     .filter(conMonto);
   const variables = calculo.costosVariables
-    .map((c) => ({
-      id: c.id,
-      nombre: c.nombre.trim() || NOMBRE_VACIO,
-      monto: aDecimalString(importeValido(c.montoUnitario)),
-    }))
+    .map((c): LineaDetalle => {
+      const porUnidad = costoVariableUnitarioDe(c, calculo.configuracion);
+      return {
+        id: c.id,
+        nombre: c.nombre.trim() || NOMBRE_VACIO,
+        monto: aDecimalString(porUnidad ?? new Decimal(0)),
+        ...(insumoSeCargaPorLote(c, calculo.configuracion.ruta)
+          ? {
+              porLote: {
+                montoLote: aDecimalString(importeValido(c.montoUnitario)),
+                unidadesPorLote: calculo.configuracion.unidadesPorLote,
+              },
+            }
+          : {}),
+      };
+    })
     .filter(conMonto);
 
   const t = calculo.trabajoPropio;
-  const totalTrabajo = importeValido(t.horasMensuales).times(importeValido(t.valorHora));
+  const totalTrabajo = trabajoPropioMensual(calculo);
   const trabajoPropio =
     t.incluir && totalTrabajo.greaterThan(0)
       ? {
+          sueldoDirecto: calculo.configuracion.ruta === "reventa",
           horasPorLote: t.horasPorLote,
           valorHora: t.valorHora,
           lotes: calculo.configuracion.lotes,

@@ -10,6 +10,7 @@ import {
   agregarConcepto as aplicarAgregarConcepto,
   agregarEscenario as aplicarAgregarEscenario,
   cambiarPaso as aplicarCambiarPaso,
+  cambiarRuta as aplicarCambiarRuta,
   crearCalculoInicial,
   duplicarEscenario as aplicarDuplicarEscenario,
   eliminarConcepto as aplicarEliminarConcepto,
@@ -25,6 +26,7 @@ import {
   type Configuracion,
   type PasoRecorrido,
   type Precio,
+  type RutaProduccion,
   type TrabajoPropio,
 } from "@/domain/types";
 
@@ -39,7 +41,8 @@ import {
 interface EstadoCalculo {
   calculo: Calculo;
   actualizarConfiguracion: (cambios: Partial<Omit<Configuracion, "volumenMensual">>) => void;
-  actualizarTrabajoPropio: (cambios: Partial<Pick<TrabajoPropio, "horasPorLote" | "valorHora">>) => void;
+  cambiarRuta: (ruta: RutaProduccion) => void;
+  actualizarTrabajoPropio: (cambios: Partial<Pick<TrabajoPropio, "horasPorLote" | "valorHora" | "sueldoMensual">>) => void;
   actualizarPrecio: (cambios: Partial<Precio>) => void;
   agregarConcepto: (categoria: CategoriaCosto, nombre?: string) => void;
   actualizarConcepto: (categoria: CategoriaCosto, id: string, cambios: CambiosConcepto) => void;
@@ -60,6 +63,7 @@ export const useCalculoStore = create<EstadoCalculo>()(
       calculo: crearCalculoInicial(),
       actualizarConfiguracion: (cambios) =>
         set((s) => ({ calculo: aplicarActualizarConfiguracion(s.calculo, cambios, ahora()) })),
+      cambiarRuta: (ruta) => set((s) => ({ calculo: aplicarCambiarRuta(s.calculo, ruta, ahora()) })),
       actualizarTrabajoPropio: (cambios) =>
         set((s) => ({ calculo: aplicarActualizarTrabajoPropio(s.calculo, cambios, ahora()) })),
       actualizarPrecio: (cambios) =>
@@ -85,13 +89,18 @@ export const useCalculoStore = create<EstadoCalculo>()(
     }),
     {
       name: "calc-int:calculo",
-      version: 3,
-      // v1 no tenía el paso «precio» y v2 no tenía los escenarios: se completan con los valores iniciales.
+      version: 5,
+      // v1 no tenía el paso «precio», v2 no tenía los escenarios, v3 no tenía la ruta de producción y
+      // v4 no tenía el sueldo mensual de «reventa»: se completan con los valores iniciales.
       migrate: (persistido) => {
         const estado = persistido as { calculo?: Calculo } | undefined;
         if (estado?.calculo && !estado.calculo.precio) estado.calculo.precio = { ...PRECIO_INICIAL };
         if (estado?.calculo && !estado.calculo.escenarios) {
           estado.calculo.escenarios = ESCENARIOS_INICIALES.map((e) => ({ ...e }));
+        }
+        if (estado?.calculo && !estado.calculo.configuracion.ruta) estado.calculo.configuracion.ruta = "lotes";
+        if (estado?.calculo && estado.calculo.trabajoPropio.sueldoMensual === undefined) {
+          estado.calculo.trabajoPropio.sueldoMensual = "";
         }
         return estado as unknown as EstadoCalculo;
       },

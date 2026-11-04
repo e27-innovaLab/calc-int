@@ -3,6 +3,7 @@ import Decimal from "decimal.js";
 import type {
   Calculo,
   ConceptoCosto,
+  Configuracion,
   CostoVariable,
   DecimalString,
   Frecuencia,
@@ -19,13 +20,18 @@ import { aMensual } from "./periodo";
  * Fórmulas (Data, «Glosario - Reglas de negocio»):
  *   Costo Fijo Total = gastos fijos + costos indirectos + trabajo propio   (todo mensual)
  *   CVU              = suma de los insumos variables por unidad
+ *                      (un insumo cargado por lote se divide por las unidades del lote; uno cargado por unidad, no)
  *   Costo Total      = Costo Fijo Total + CVU × volumen mensual
  *   Costo Unitario   = Costo Total ÷ volumen mensual
  */
 
 const CERO = new Decimal(0);
 
-/** Importe válido (número, no negativo). Lo demás cuenta como cero: lo informa la validación. */
+/**
+ * Importe válido (número, no negativo). Lo demás cuenta como cero SOLO para mostrar subtotales parciales:
+ * `calcularResumenCostos` avisa con `tieneImportesInvalidos` y no entrega costo unitario, así un dato
+ * inválido nunca cambia el resultado sin que el usuario lo sepa.
+ */
 export function importeValido(valor: DecimalString): Decimal {
   const d = leerNumero(valor);
   return d && !d.isNegative() ? d : CERO;
@@ -36,12 +42,80 @@ export function montoMensual(monto: DecimalString, frecuencia: Frecuencia): Deci
   return aMensual(importeValido(monto), frecuencia);
 }
 
+/** Un importe cargado que no sirve: no es un número o es negativo. Vacío no cuenta (todavía no lo cargó). */
+function importeInvalido(valor: DecimalString): boolean {
+  if (valor.trim() === "") return false;
+  const d = leerNumero(valor);
+  return !d || d.isNegative();
+}
+
+type EntradaImportes = Pick<
+  Calculo,
+  "configuracion" | "costosFijos" | "costosVariables" | "costosIndirectos" | "trabajoPropio"
+>;
+
+/**
+ * Hay algún importe cargado que no es un número o es negativo. Mira solo los datos que usa la ruta elegida:
+ * el sueldo en «reventa»; las horas y el valor por hora en las otras dos.
+ */
+export function hayImportesInvalidos(calculo: EntradaImportes): boolean {
+  const { trabajoPropio, configuracion } = calculo;
+  const delTrabajo =
+    configuracion.ruta === "reventa"
+      ? [trabajoPropio.sueldoMensual]
+      : [trabajoPropio.horasPorLote, trabajoPropio.valorHora];
+  return [
+    ...calculo.costosFijos.map((c) => c.monto),
+    ...calculo.costosIndirectos.map((c) => c.monto),
+    ...calculo.costosVariables.map((c) => c.montoUnitario),
+    ...delTrabajo,
+  ].some(importeInvalido);
+}
+
 function sumarPorPeriodo(conceptos: Extract<ConceptoCosto, { frecuencia: Frecuencia }>[]): Decimal {
   return conceptos.reduce((total, c) => total.plus(montoMensual(c.monto, c.frecuencia)), CERO);
 }
 
-function sumarVariables(conceptos: CostoVariable[]): Decimal {
-  return conceptos.reduce((total, c) => total.plus(importeValido(c.montoUnitario)), CERO);
+type ConfiguracionDeInsumos = Pick<Configuracion, "ruta" | "unidadesPorLote">;
+
+/** El insumo se cargó por lote. Solo cuenta en la ruta «lotes»: en las otras la base se ignora. */
+export function insumoSeCargaPorLote(insumo: CostoVariable, ruta: Configuracion["ruta"]): boolean {
+  return ruta === "lotes" && insumo.base === "lote";
+}
+
+/** Unidades por lote usadas como divisor: solo si es un número mayor que cero. */
+function unidadesDelLote(configuracion: ConfiguracionDeInsumos): Decimal | null {
+  const unidades = leerNumero(configuracion.unidadesPorLote);
+  return unidades && unidades.isPositive() && !unidades.isZero() ? unidades : null;
+}
+
+/**
+ * Costo del insumo para UNA unidad terminada.
+ * - Cargado por unidad: se usa tal cual, sin dividir.
+ * - Cargado por lote (ruta «lotes»): costo del insumo en el lote ÷ unidades por lote.
+ * Devuelve null cuando es por lote y las unidades por lote todavía no sirven de divisor (vacías, cero o negativas):
+ * no se inventa un valor.
+ */
+export function costoVariableUnitarioDe(insumo: CostoVariable, configuracion: ConfiguracionDeInsumos): Decimal | null {
+  const importe = importeValido(insumo.montoUnitario);
+  if (!insumoSeCargaPorLote(insumo, configuracion.ruta)) return importe;
+  const unidades = unidadesDelLote(configuracion);
+  return unidades ? importe.dividedBy(unidades) : null;
+}
+
+/** Suma de insumos por unidad. `faltanUnidadesPorLote`: hay un insumo por lote con importe que no se pudo dividir. */
+function sumarVariables(
+  conceptos: CostoVariable[],
+  configuracion: ConfiguracionDeInsumos,
+): { total: Decimal; faltanUnidadesPorLote: boolean } {
+  let total = CERO;
+  let faltanUnidadesPorLote = false;
+  for (const concepto of conceptos) {
+    const porUnidad = costoVariableUnitarioDe(concepto, configuracion);
+    if (porUnidad) total = total.plus(porUnidad);
+    else if (importeValido(concepto.montoUnitario).greaterThan(0)) faltanUnidadesPorLote = true;
+  }
+  return { total, faltanUnidadesPorLote };
 }
 
 /** Unidades por mes = unidades por lote × lotes. Vacío si falta alguno o no son números. */
@@ -63,7 +137,7 @@ export interface ResumenCostos {
   totalGastosFijosMensual: DecimalString;
   /** Otros costos indirectos, tratados como fijos del mes. */
   totalIndirectosMensual: DecimalString;
-  /** Valor del tiempo propio por mes (horas mensuales × valor por hora). */
+  /** Valor del tiempo propio por mes (horas mensuales × valor por hora, o el sueldo mensual en «reventa»). */
   totalTrabajoPropioMensual: DecimalString;
   /** Gastos fijos + indirectos + trabajo propio. */
   costoFijoTotalMensual: DecimalString;
@@ -79,6 +153,13 @@ export interface ResumenCostos {
   tieneCostosFijos: boolean;
   /** Hay algún insumo variable cargado (> 0). */
   tieneCostosVariables: boolean;
+  /** Algún importe cargado no es un número o es negativo: no se calcula el costo unitario hasta corregirlo. */
+  tieneImportesInvalidos: boolean;
+  /**
+   * Hay un insumo cargado por lote pero las unidades por lote no sirven de divisor (vacías, cero o negativas):
+   * el costo por unidad queda incompleto y no se calcula el costo unitario hasta completarlas.
+   */
+  faltanUnidadesPorLote: boolean;
 }
 
 type EntradaResumen = Pick<
@@ -86,22 +167,34 @@ type EntradaResumen = Pick<
   "configuracion" | "costosFijos" | "costosVariables" | "costosIndirectos" | "trabajoPropio"
 >;
 
+/**
+ * Valor del tiempo propio por mes.
+ * - «lotes» y «unidad»: horas mensuales × valor por hora.
+ * - «reventa» (Alternativa 2 de Data): el sueldo mensual que quiere ganar, directo y sin multiplicar por el volumen.
+ */
+export function trabajoPropioMensual(calculo: EntradaResumen): Decimal {
+  const { trabajoPropio, configuracion } = calculo;
+  if (!trabajoPropio.incluir) return CERO;
+  return configuracion.ruta === "reventa"
+    ? importeValido(trabajoPropio.sueldoMensual)
+    : importeValido(trabajoPropio.horasMensuales).times(importeValido(trabajoPropio.valorHora));
+}
+
 export function calcularResumenCostos(calculo: EntradaResumen): ResumenCostos {
   const gastosFijos = sumarPorPeriodo(calculo.costosFijos);
   const indirectos = sumarPorPeriodo(calculo.costosIndirectos);
 
-  const { trabajoPropio } = calculo;
-  const trabajo = trabajoPropio.incluir
-    ? importeValido(trabajoPropio.horasMensuales).times(importeValido(trabajoPropio.valorHora))
-    : CERO;
+  const trabajo = trabajoPropioMensual(calculo);
 
   const costoFijoTotal = gastosFijos.plus(indirectos).plus(trabajo);
-  const cvu = sumarVariables(calculo.costosVariables);
+  const { total: cvu, faltanUnidadesPorLote } = sumarVariables(calculo.costosVariables, calculo.configuracion);
 
   const volumen = leerNumero(calculo.configuracion.volumenMensual);
   const volumenValido = volumen && volumen.isPositive() && !volumen.isZero() ? volumen : null;
 
-  const costoTotal = volumenValido ? costoFijoTotal.plus(cvu.times(volumenValido)) : null;
+  const importesInvalidos = hayImportesInvalidos(calculo);
+  const costoTotal =
+    volumenValido && !importesInvalidos && !faltanUnidadesPorLote ? costoFijoTotal.plus(cvu.times(volumenValido)) : null;
   const costoUnitario = costoTotal && volumenValido ? costoTotal.dividedBy(volumenValido) : null;
 
   return {
@@ -115,5 +208,7 @@ export function calcularResumenCostos(calculo: EntradaResumen): ResumenCostos {
     costoUnitario: costoUnitario ? aDecimalString(costoUnitario) : null,
     tieneCostosFijos: costoFijoTotal.greaterThan(0),
     tieneCostosVariables: cvu.greaterThan(0),
+    tieneImportesInvalidos: importesInvalidos,
+    faltanUnidadesPorLote,
   };
 }

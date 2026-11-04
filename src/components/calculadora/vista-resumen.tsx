@@ -7,6 +7,7 @@ import { Aviso } from "@/components/ui/aviso";
 import { Ayuda } from "@/components/ui/ayuda";
 import { BotonLink } from "@/components/ui/boton";
 import { Tarjeta } from "@/components/ui/tarjeta";
+import { ComoSeCalcula } from "@/components/ui/como-se-calcula";
 import { calcularResumenCostos } from "@/domain/motor/costos";
 import {
   composicionCostoUnitario,
@@ -44,7 +45,7 @@ function Resumen() {
   const composicion = useMemo(() => composicionCostoUnitario(calculo), [calculo]);
   const detalle = useMemo(() => detalleDeCostos(calculo), [calculo]);
 
-  const { nombre, unidadesPorLote, lotes, unidadVenta } = calculo.configuracion;
+  const { nombre, unidadesPorLote, lotes, unidadVenta, ruta } = calculo.configuracion;
   const producto = nombre.trim();
   const unidades = unidadVenta === "unidad" ? "unidades" : unidadVenta;
   const hayDatos = resumen.costoUnitario !== null && (resumen.tieneCostosFijos || resumen.tieneCostosVariables);
@@ -74,21 +75,33 @@ function Resumen() {
   return (
     <div className="flex flex-col gap-8">
       <div>
+        <p className="mb-1 text-xs font-bold uppercase tracking-widest text-primary-600">Paso 3 de 5</p>
         <h1 className="text-3xl font-bold tracking-tight text-gray-900">
-          El costo real de producir {producto ? `tu ${producto.toLowerCase()}` : "tu producto"}
+          Esto es lo que te cuesta producir {producto ? `tu ${producto}` : "tu producto"}
         </h1>
-        <p className="mt-2 text-lg text-gray-700">Revisá que todo esté completo antes de fijar el precio.</p>
+        <p className="mt-2 text-lg text-gray-700">Revisá los números. Si algo no cierra, volvé a Costos y ajustá.</p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <div className="rounded-2xl bg-primary-600 p-5 text-white shadow-sm">
+        <div className="rounded-2xl bg-primary-900 p-5 text-white shadow-sm">
           <p className="text-sm font-medium">Costo unitario real</p>
           <p className="mt-2 text-3xl font-extrabold tracking-tight">{formatearMonto(costoUnitario)}</p>
           <p className="mt-2 text-sm text-primary-100">lo que te cuesta hacer una sola unidad</p>
+          <ComoSeCalcula
+            tono="oscuro"
+            formula="Costo fijo total ÷ unidades por mes + costo variable por unidad"
+            cuenta={`${formatearMonto(resumen.costoFijoTotalMensual)} ÷ ${formatearCantidad(resumen.volumenMensual)} + ${formatearMonto(resumen.costoVariableUnitario)} = ${formatearMonto(costoUnitario)}`}
+          />
         </div>
-        <TarjetaDato titulo="Costo total por lote" valor={formatearMonto(porLote)}>
-          {formatearCantidad(unidadesPorLote)} uds × {formatearCantidad(lotes)} lotes
-        </TarjetaDato>
+        {ruta === "lotes" ? (
+          <TarjetaDato titulo="Costo total por lote" valor={formatearMonto(porLote)}>
+            {formatearCantidad(unidadesPorLote)} uds × {formatearCantidad(lotes)} lotes
+          </TarjetaDato>
+        ) : (
+          <TarjetaDato titulo="Costos fijos por mes" valor={formatearMonto(resumen.costoFijoTotalMensual)}>
+            repartidos entre {formatearCantidad(resumen.volumenMensual)} {unidades}
+          </TarjetaDato>
+        )}
         <TarjetaDato titulo="Costo total mensual" valor={formatearMonto(resumen.costoTotalMensual)}>
           {formatearCantidad(resumen.volumenMensual)} {unidades}/mes
         </TarjetaDato>
@@ -120,10 +133,10 @@ function Resumen() {
             Composición del costo unitario
           </h2>
           <ul className="mt-4 flex flex-col gap-4">
-            <FilaComposicion etiqueta="Trabajo propio" partida={composicion.trabajoPropio} color="bg-primary-600" />
-            <FilaComposicion etiqueta="Gastos fijos" partida={composicion.gastosFijos} color="bg-success-600" />
+            <FilaComposicion etiqueta="Trabajo propio" partida={composicion.trabajoPropio} color="bg-blue-600" />
+            <FilaComposicion etiqueta="Gastos fijos" partida={composicion.gastosFijos} color="bg-success-500" />
             <FilaComposicion etiqueta="Costos indirectos" partida={composicion.indirectos} color="bg-violet-500" />
-            <FilaComposicion etiqueta="Materiales / insumos" partida={composicion.materiales} color="bg-warning-500" />
+            <FilaComposicion etiqueta="Materiales / insumos" partida={composicion.materiales} color="bg-orange-500" />
           </ul>
         </Tarjeta>
       ) : null}
@@ -144,8 +157,14 @@ function Resumen() {
               <h3 className="text-sm font-medium text-gray-500">Trabajo propio mensual</h3>
               <div className="mt-2 flex items-baseline justify-between gap-3 text-sm text-gray-700">
                 <span>
-                  {formatearCantidad(detalle.trabajoPropio.horasPorLote)} hs × {formatearMonto(detalle.trabajoPropio.valorHora)}/h ×{" "}
-                  {formatearCantidad(detalle.trabajoPropio.lotes)} lotes
+                  {detalle.trabajoPropio.sueldoDirecto ? (
+                    "Sueldo mensual esperado"
+                  ) : (
+                    <>
+                      {formatearCantidad(detalle.trabajoPropio.horasPorLote)} hs × {formatearMonto(detalle.trabajoPropio.valorHora)}/h ×{" "}
+                      {formatearCantidad(detalle.trabajoPropio.lotes)} {ruta === "lotes" ? "lotes" : "unidades"}
+                    </>
+                  )}
                 </span>
                 <span className="font-medium text-gray-900">{formatearMonto(detalle.trabajoPropio.totalMensual)}</span>
               </div>
@@ -163,7 +182,7 @@ function Resumen() {
         <BotonLink href="/calculadora/costos" variante="secundario">
           ← Atrás
         </BotonLink>
-        <BotonLink href="/calculadora/precio">Ver resumen de costos →</BotonLink>
+        <BotonLink href="/calculadora/precio">Continuar →</BotonLink>
       </div>
     </div>
   );
@@ -206,7 +225,14 @@ function BloqueDetalle({ titulo, lineas }: { titulo: string; lineas: LineaDetall
       <ul className="mt-2 divide-y divide-gray-100 text-sm">
         {lineas.map((l) => (
           <li key={l.id} className="flex items-baseline justify-between gap-3 py-2 text-gray-700">
-            <span>{l.nombre}</span>
+            <span>
+              {l.nombre}
+              {l.porLote ? (
+                <span className="block text-xs text-gray-500">
+                  {formatearMonto(l.porLote.montoLote)} por lote ÷ {formatearCantidad(l.porLote.unidadesPorLote)} unidades
+                </span>
+              ) : null}
+            </span>
             <span>{formatearMonto(l.monto)}</span>
           </li>
         ))}

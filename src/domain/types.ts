@@ -21,6 +21,19 @@ export type Id = string;
 
 export type TipoOferta = "producto" | "servicio";
 
+/**
+ * Cómo produce o consigue lo que vende el usuario (primer paso del recorrido, «¿Cómo producís?»).
+ * - `lotes`: produce en tandas (pastelería, velas). Unidades por lote × lotes por mes.
+ * - `unidad`: arma cada producto a medida. Carga el volumen por mes y las horas por unidad.
+ * - `reventa`: compra productos terminados. Carga las ventas por mes y el tiempo que le lleva cada venta.
+ *
+ * Las rutas `unidad` y `reventa` siguen la «regla del 1» de Data: 1 unidad por lote y, en «lotes», el volumen total.
+ * Así el motor es el mismo para las tres y solo cambia lo que se le pregunta al usuario.
+ */
+export type RutaProduccion = "lotes" | "unidad" | "reventa";
+
+export const RUTAS_PRODUCCION: RutaProduccion[] = ["lotes", "unidad", "reventa"];
+
 /** El MVP trabaja solo en pesos argentinos. */
 export type Moneda = "ARS";
 
@@ -32,6 +45,8 @@ export type Frecuencia = "semanal" | "mensual" | "anual";
 
 export interface Configuracion {
   tipo: TipoOferta;
+  /** Ruta elegida en el paso 1. Cambia las preguntas de volumen y de tiempo, no las fórmulas. */
+  ruta: RutaProduccion;
   /** Nombre del producto o servicio. Ej: "Torta de chocolate". */
   nombre: string;
   moneda: Moneda;
@@ -74,13 +89,25 @@ export interface CostoFijo extends ConceptoPorPeriodo {
 }
 
 /**
+ * Base en la que el usuario cargó el monto de un insumo.
+ * - `unidad`: lo que cuesta ese insumo para una unidad terminada (se usa tal cual).
+ * - `lote`: lo que cuesta ese insumo para todo el lote (ruta «lotes»); el motor lo divide por las unidades del lote.
+ */
+export type BaseInsumo = "unidad" | "lote";
+
+/**
  * Insumo directamente atribuible a cada unidad vendida. Ej: harina, envase.
  * Es el único costo con base por unidad.
  */
 export interface CostoVariable extends ConceptoBase {
   categoria: "variable";
-  /** Costo por cada unidad de venta. */
+  /**
+   * Monto del insumo, en la base indicada por `base` (por unidad si no se indica). Se llama «unitario» por la
+   * base habitual; para obtener el costo por unidad siempre usar `costoVariableUnitarioDe` (motor/costos.ts).
+   */
   montoUnitario: DecimalString;
+  /** Base del monto. Solo la ruta «lotes» admite `lote`; en las demás se ignora. */
+  base?: BaseInsumo;
 }
 
 /**
@@ -103,7 +130,7 @@ export type CategoriaCosto = ConceptoCosto["categoria"];
 export interface TrabajoPropio {
   /** Si el usuario decide incluir el valor de su tiempo en el costo. */
   incluir: boolean;
-  /** Horas que le dedica a cada lote. */
+  /** Horas que le dedica a cada lote (ruta «lotes») o a cada unidad (ruta «unidad»). La ruta «reventa» no las usa. */
   horasPorLote: DecimalString;
   /**
    * Horas trabajadas por mes = `horasPorLote × lotes`.
@@ -112,6 +139,11 @@ export interface TrabajoPropio {
   horasMensuales: DecimalString;
   /** Cuánto vale una hora de trabajo. */
   valorHora: DecimalString;
+  /**
+   * Sueldo fijo que quiere ganar por mes. Solo lo usa la ruta «reventa» (Alternativa 2 del glosario de Data,
+   * elegida por el equipo): entra directo como costo fijo y no se multiplica por el volumen.
+   */
+  sueldoMensual: DecimalString;
 }
 
 // ─────────────────────────────────────────────
@@ -119,7 +151,7 @@ export interface TrabajoPropio {
 // ─────────────────────────────────────────────
 
 /**
- * Pasos del recorrido, tal como los muestra el diseño (Figma «PreciJusto»):
+ * Pasos del recorrido, tal como los muestra el diseño (Figma «Preciar»):
  * Tu producto → Costos (pestañas Fijos y Variables) → Resumen → Precio → Simulador.
  * Trabajo propio e indirectos viven dentro del paso «costos».
  */
@@ -220,6 +252,7 @@ export interface ErrorValidacion {
 
 export const CONFIGURACION_INICIAL: Configuracion = {
   tipo: "producto",
+  ruta: "lotes",
   nombre: "",
   moneda: "ARS",
   unidadVenta: "unidad",
@@ -233,4 +266,5 @@ export const TRABAJO_PROPIO_INICIAL: TrabajoPropio = {
   horasPorLote: "",
   horasMensuales: "",
   valorHora: "",
+  sueldoMensual: "",
 };

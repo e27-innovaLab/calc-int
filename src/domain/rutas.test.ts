@@ -1,0 +1,194 @@
+import { describe, expect, it } from "vitest";
+
+import {
+  actualizarConfiguracion,
+  actualizarTrabajoPropio,
+  cambiarRuta,
+  crearCalculoInicial,
+  datosQueSePierdenAlCambiarRuta,
+} from "./calculo";
+import { calcularResumenCostos } from "./motor/costos";
+import { MENSAJES_RUTA, validarConfiguracion, validarCostos } from "./validaciones";
+
+const AHORA = "2026-10-26T12:00:00.000Z";
+
+describe("cambiarRuta", () => {
+  it("arranca en «lotes»", () => {
+    expect(crearCalculoInicial().configuracion.ruta).toBe("lotes");
+  });
+
+  it("elegir la misma ruta no cambia nada", () => {
+    const c = crearCalculoInicial();
+    expect(cambiarRuta(c, "lotes", AHORA)).toBe(c);
+  });
+
+  it("de «lotes» a «unidad» deja 1 unidad por lote y vacía volumen y horas (regla del 1)", () => {
+    let c = actualizarConfiguracion(crearCalculoInicial(), { unidadesPorLote: "24", lotes: "2" }, AHORA);
+    c = actualizarTrabajoPropio(c, { horasPorLote: "4", valorHora: "3000" }, AHORA);
+    c = cambiarRuta(c, "unidad", AHORA);
+
+    expect(c.configuracion.ruta).toBe("unidad");
+    expect(c.configuracion.unidadesPorLote).toBe("1");
+    expect(c.configuracion.lotes).toBe("");
+    expect(c.configuracion.volumenMensual).toBe("");
+    expect(c.trabajoPropio.horasPorLote).toBe("");
+    expect(c.trabajoPropio.valorHora).toBe("3000");
+  });
+
+  it("entre «unidad» y «reventa» conserva el volumen, vacía las horas y conserva el valor por hora", () => {
+    let c = cambiarRuta(crearCalculoInicial(), "unidad", AHORA);
+    c = actualizarConfiguracion(c, { lotes: "80" }, AHORA);
+    c = actualizarTrabajoPropio(c, { horasPorLote: "0.5", valorHora: "2000" }, AHORA);
+    c = cambiarRuta(c, "reventa", AHORA);
+
+    expect(c.configuracion.ruta).toBe("reventa");
+    expect(c.configuracion.lotes).toBe("80");
+    expect(c.configuracion.volumenMensual).toBe("80");
+    expect(c.trabajoPropio.horasPorLote).toBe("");
+    expect(c.trabajoPropio.valorHora).toBe("2000");
+    // en «reventa» el tiempo propio solo cuenta si cargó el sueldo mensual
+    expect(c.trabajoPropio.incluir).toBe(false);
+  });
+
+  it("de una ruta directa a «lotes» vuelve a pedir las unidades por lote", () => {
+    let c = cambiarRuta(crearCalculoInicial(), "reventa", AHORA);
+    c = actualizarConfiguracion(c, { lotes: "80" }, AHORA);
+    c = cambiarRuta(c, "lotes", AHORA);
+
+    expect(c.configuracion.unidadesPorLote).toBe("");
+    expect(c.configuracion.lotes).toBe("1");
+    expect(c.configuracion.volumenMensual).toBe("");
+  });
+
+  it("el volumen mensual de una ruta directa es el total cargado", () => {
+    let c = cambiarRuta(crearCalculoInicial(), "unidad", AHORA);
+    c = actualizarConfiguracion(c, { lotes: "80" }, AHORA);
+    expect(c.configuracion.volumenMensual).toBe("80");
+  });
+
+  it("en «unidad» las horas por unidad se multiplican por el total de unidades", () => {
+    let c = cambiarRuta(crearCalculoInicial(), "unidad", AHORA);
+    c = actualizarConfiguracion(c, { lotes: "80" }, AHORA);
+    c = actualizarTrabajoPropio(c, { horasPorLote: "0.5", valorHora: "2000" }, AHORA);
+
+    // 0,5 h × $2.000/h × 80 unidades = $80.000 por mes
+    expect(calcularResumenCostos(c).totalTrabajoPropioMensual).toBe("80000");
+  });
+
+  it("en «reventa» el sueldo mensual entra directo como costo fijo y no depende del volumen", () => {
+    const con = (ventas: string) => {
+      let c = cambiarRuta(crearCalculoInicial(), "reventa", AHORA);
+      c = actualizarConfiguracion(c, { lotes: ventas }, AHORA);
+      return actualizarTrabajoPropio(c, { sueldoMensual: "300000" }, AHORA);
+    };
+    expect(calcularResumenCostos(con("80")).totalTrabajoPropioMensual).toBe("300000");
+    expect(calcularResumenCostos(con("200")).totalTrabajoPropioMensual).toBe("300000");
+    expect(calcularResumenCostos(con("80")).costoFijoTotalMensual).toBe("300000");
+  });
+
+  it("en «reventa» ignora las horas aunque haya quedado algo cargado", () => {
+    let c = cambiarRuta(crearCalculoInicial(), "reventa", AHORA);
+    c = actualizarConfiguracion(c, { lotes: "80" }, AHORA);
+    c = actualizarTrabajoPropio(c, { sueldoMensual: "100000", horasPorLote: "3", valorHora: "5000" }, AHORA);
+    expect(calcularResumenCostos(c).totalTrabajoPropioMensual).toBe("100000");
+  });
+});
+
+describe("validaciones según la ruta", () => {
+  const conRuta = (ruta: "lotes" | "unidad" | "reventa", cambios = {}) =>
+    actualizarConfiguracion(cambiarRuta(crearCalculoInicial(), ruta, AHORA), { nombre: "Vela", ...cambios }, AHORA)
+      .configuracion;
+
+  it("«unidad» no pide unidades por lote y pregunta por unidades por mes", () => {
+    const errores = validarConfiguracion(conRuta("unidad"));
+    expect(errores.map((e) => e.campo)).toEqual(["configuracion.lotes"]);
+    expect(errores[0].mensaje).toBe(MENSAJES_RUTA.unidad.volumenVacio);
+  });
+
+  it("«reventa» habla de ventas", () => {
+    const errores = validarConfiguracion(conRuta("reventa"));
+    expect(errores[0].mensaje).toBe("Indicá cuántas unidades vendés por mes.");
+  });
+
+  it("«lotes» sigue pidiendo unidades por lote y lotes", () => {
+    const campos = validarConfiguracion(conRuta("lotes", { lotes: "" })).map((e) => e.campo);
+    expect(campos).toEqual(["configuracion.unidadesPorLote", "configuracion.lotes"]);
+  });
+
+  it("con el volumen cargado, las rutas directas quedan válidas", () => {
+    expect(validarConfiguracion(conRuta("unidad", { lotes: "80" }))).toEqual([]);
+    expect(validarConfiguracion(conRuta("reventa", { lotes: "80" }))).toEqual([]);
+  });
+
+  it("el mensaje de horas vacías cambia con la ruta (lotes y unidad)", () => {
+    for (const ruta of ["lotes", "unidad"] as const) {
+      let c = cambiarRuta(crearCalculoInicial(), ruta, AHORA);
+      c = actualizarTrabajoPropio(c, { horasPorLote: "", valorHora: "1000" }, AHORA);
+      const error = validarCostos(c).find((e) => e.campo === "trabajoPropio.horasPorLote");
+      expect(error?.mensaje).toBe(MENSAJES_RUTA[ruta].horasVacias);
+    }
+  });
+
+  it("«reventa» valida solo el sueldo mensual y no pide horas ni valor por hora", () => {
+    let c = cambiarRuta(crearCalculoInicial(), "reventa", AHORA);
+    c = actualizarTrabajoPropio(c, { sueldoMensual: "300000" }, AHORA);
+    expect(validarCostos(c).filter((e) => e.campo.startsWith("trabajoPropio"))).toEqual([]);
+
+    // El sueldo pretendido puede ser cero; negativo o con letras no.
+    c = actualizarTrabajoPropio(c, { sueldoMensual: "0" }, AHORA);
+    expect(validarCostos(c).map((e) => e.campo)).not.toContain("trabajoPropio.sueldoMensual");
+    for (const invalido of ["-1", "abc"]) {
+      const malo = actualizarTrabajoPropio(c, { sueldoMensual: invalido }, AHORA);
+      expect(validarCostos(malo).map((e) => e.campo)).toContain("trabajoPropio.sueldoMensual");
+    }
+  });
+});
+
+describe("horas de trabajo: cero es válido, negativo no", () => {
+  it("en «lotes» y «unidad»", () => {
+    for (const ruta of ["lotes", "unidad"] as const) {
+      let c = cambiarRuta(crearCalculoInicial(), ruta, AHORA);
+      c = actualizarTrabajoPropio(c, { horasPorLote: "0", valorHora: "1000" }, AHORA);
+      expect(validarCostos(c).map((e) => e.campo)).not.toContain("trabajoPropio.horasPorLote");
+      c = actualizarTrabajoPropio(c, { horasPorLote: "-2" }, AHORA);
+      expect(validarCostos(c)).toContainEqual(
+        expect.objectContaining({ campo: "trabajoPropio.horasPorLote", mensaje: "Las horas no pueden ser negativas." }),
+      );
+    }
+  });
+});
+
+describe("datosQueSePierdenAlCambiarRuta", () => {
+  it("sin nada cargado no se pierde nada", () => {
+    for (const ruta of ["unidad", "reventa"] as const) {
+      expect(datosQueSePierdenAlCambiarRuta(crearCalculoInicial(), ruta)).toEqual([]);
+    }
+  });
+
+  it("de «lotes» a una ruta directa avisa las unidades por lote, los lotes y las horas ya cargados", () => {
+    let c = actualizarConfiguracion(crearCalculoInicial(), { unidadesPorLote: "24", lotes: "2" }, AHORA);
+    c = actualizarTrabajoPropio(c, { horasPorLote: "4" }, AHORA);
+    expect(datosQueSePierdenAlCambiarRuta(c, "unidad")).toEqual([
+      "las unidades por lote",
+      "los lotes por mes",
+      "las horas de trabajo",
+    ]);
+  });
+
+  it("«1» lote es el valor inicial: no se avisa como dato cargado", () => {
+    const c = actualizarConfiguracion(crearCalculoInicial(), { unidadesPorLote: "24" }, AHORA);
+    expect(datosQueSePierdenAlCambiarRuta(c, "reventa")).toEqual(["las unidades por lote"]);
+  });
+
+  it("de una ruta directa a «lotes» avisa las unidades por mes; entre directas se conserva", () => {
+    let c = cambiarRuta(crearCalculoInicial(), "unidad", AHORA);
+    c = actualizarConfiguracion(c, { lotes: "80" }, AHORA);
+    expect(datosQueSePierdenAlCambiarRuta(c, "lotes")).toEqual(["las unidades por mes"]);
+    expect(datosQueSePierdenAlCambiarRuta(c, "reventa")).toEqual([]);
+  });
+
+  it("cambiar a la misma ruta no pierde nada", () => {
+    const c = actualizarConfiguracion(crearCalculoInicial(), { unidadesPorLote: "24", lotes: "2" }, AHORA);
+    expect(datosQueSePierdenAlCambiarRuta(c, "lotes")).toEqual([]);
+  });
+});

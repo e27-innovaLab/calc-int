@@ -9,12 +9,38 @@ import { Boton, BotonLink } from "@/components/ui/boton";
 import { Campo } from "@/components/ui/campo";
 import { CampoMonto } from "@/components/ui/campo-monto";
 import { Tarjeta } from "@/components/ui/tarjeta";
-import { calcularResumenCostos } from "@/domain/motor/costos";
+import { calcularResumenCostos, costoVariableUnitarioDe, insumoSeCargaPorLote } from "@/domain/motor/costos";
 import type { CategoriaCosto } from "@/domain/types";
 import { hayErrores, validarConfiguracion, validarCostos } from "@/domain/validaciones";
 import { useHidratado } from "@/hooks/use-hidratado";
 import { formatearCantidad, formatearMonto } from "@/lib/formato";
+import type { RutaProduccion } from "@/domain/types";
 import { useCalculoStore } from "@/store/calculo-store";
+
+/** Textos del trabajo propio según la ruta del paso 1 (en «unidad» y «reventa» las horas son por unidad / por venta). */
+const TEXTOS_TRABAJO: Record<
+  RutaProduccion,
+  { pregunta: string; multiplicador: string; consejo: string; consejoFinal: string }
+> = {
+  lotes: {
+    pregunta: "¿Cuántas horas le dedicás a cada lote?",
+    multiplicador: "lotes",
+    consejo: "por lote",
+    consejoFinal: "por lote",
+  },
+  unidad: {
+    pregunta: "¿Cuántas horas le dedicás a cada unidad?",
+    multiplicador: "unidades",
+    consejo: "por unidad",
+    consejoFinal: "por unidad",
+  },
+  reventa: {
+    pregunta: "¿Qué sueldo fijo querés ganar por mes?",
+    multiplicador: "ventas",
+    consejo: "por venta",
+    consejoFinal: "por venta",
+  },
+};
 
 import { ListaConceptos, type FilaConcepto } from "./lista-conceptos";
 
@@ -30,10 +56,24 @@ function Esqueleto() {
   );
 }
 
+/** Íconos de las pestañas (Figma). Decorativos: la etiqueta ya dice lo mismo. */
+const ICONO_FIJOS = (
+  <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="size-4">
+    <rect x="5" y="3" width="14" height="18" rx="2" />
+    <path d="M9 8h6M9 12h6M9 16h4" />
+  </svg>
+);
+const ICONO_VARIABLES = (
+  <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="size-4">
+    <rect x="3" y="6" width="18" height="12" rx="2" />
+    <circle cx="12" cy="12" r="2.5" />
+  </svg>
+);
+
 function Subtotal({ etiqueta, valor }: { etiqueta: string; valor: string }) {
   return (
     <div className="flex items-center justify-between rounded-xl bg-gray-100 px-4 py-3 text-sm">
-      <span className="text-gray-700">{etiqueta}</span>
+      <span className="text-xs font-semibold uppercase tracking-wider text-gray-700">{etiqueta}</span>
       <strong className="text-base text-gray-900">{valor}</strong>
     </div>
   );
@@ -64,6 +104,9 @@ function Formulario() {
   const agregarConcepto = useCalculoStore((s) => s.agregarConcepto);
   const eliminarConcepto = useCalculoStore((s) => s.eliminarConcepto);
   const actualizarTrabajoPropio = useCalculoStore((s) => s.actualizarTrabajoPropio);
+  const textosTrabajo = TEXTOS_TRABAJO[calculo.configuracion.ruta];
+  const esReventa = calculo.configuracion.ruta === "reventa";
+  const esLotes = calculo.configuracion.ruta === "lotes";
   const cambiarPaso = useCalculoStore((s) => s.cambiarPaso);
 
   const [pestana, setPestana] = useState<Pestana>("fijos");
@@ -86,11 +129,20 @@ function Formulario() {
   // --- listas de conceptos ---
   const filasFijas: FilaConcepto[] = calculo.costosFijos.map((c) => ({ id: c.id, nombre: c.nombre, valor: c.monto }));
   const filasIndirectas: FilaConcepto[] = calculo.costosIndirectos.map((c) => ({ id: c.id, nombre: c.nombre, valor: c.monto }));
-  const filasVariables: FilaConcepto[] = calculo.costosVariables.map((c) => ({
-    id: c.id,
-    nombre: c.nombre,
-    valor: c.montoUnitario,
-  }));
+  const filasVariables: FilaConcepto[] = calculo.costosVariables.map((c) => {
+    const fila: FilaConcepto = { id: c.id, nombre: c.nombre, valor: c.montoUnitario };
+    if (!esLotes) return fila;
+    fila.base = c.base ?? "unidad";
+    if (insumoSeCargaPorLote(c, calculo.configuracion.ruta)) {
+      const porUnidad = costoVariableUnitarioDe(c, calculo.configuracion);
+      fila.equivalente = !c.montoUnitario.trim()
+        ? undefined
+        : porUnidad
+          ? `= ${formatearMonto(porUnidad.toString())} por unidad (÷ ${formatearCantidad(calculo.configuracion.unidadesPorLote)})`
+          : "Completá las unidades por lote en «Tu producto» para dividirlo.";
+    }
+    return fila;
+  });
 
   const cambiar = (categoria: CategoriaCosto) => (id: string, cambios: { nombre?: string; valor?: string }) =>
     actualizarConcepto(categoria, id, {
@@ -135,6 +187,7 @@ function Formulario() {
   return (
     <div className="flex flex-col gap-6">
       <div>
+        <p className="mb-1 text-xs font-bold uppercase tracking-widest text-primary-600">Paso 2 de 5</p>
         <h1 className="text-3xl font-bold tracking-tight text-gray-900">
           {pestana === "fijos" ? "¿Cuánto te cuesta producir?" : "Cargá tus costos"}
         </h1>
@@ -157,10 +210,10 @@ function Formulario() {
       <div role="tablist" aria-label="Tipo de costos" className="grid grid-cols-2 gap-1 rounded-xl bg-gray-100 p-1">
         {(
           [
-            ["fijos", "Costos Fijos"],
-            ["variables", "Costos Variables"],
+            ["fijos", "Costos Fijos", ICONO_FIJOS],
+            ["variables", "Costos Variables", ICONO_VARIABLES],
           ] as const
-        ).map(([id, etiqueta]) => (
+        ).map(([id, etiqueta, icono]) => (
           <button
             key={id}
             type="button"
@@ -169,10 +222,11 @@ function Formulario() {
             aria-selected={pestana === id}
             aria-controls={`panel-${id}`}
             onClick={() => setPestana(id)}
-            className={`rounded-lg px-4 py-3 text-base font-semibold focus-visible:outline-2 focus-visible:outline-primary-600 ${
+            className={`inline-flex items-center justify-center gap-2 rounded-lg px-4 py-3 text-base font-semibold focus-visible:outline-2 focus-visible:outline-primary-600 ${
               pestana === id ? "bg-white text-primary-700 shadow-sm" : "text-gray-700 hover:text-gray-900"
             }`}
           >
+            {icono}
             {etiqueta}
           </button>
         ))}
@@ -214,9 +268,36 @@ function Formulario() {
               Lo calculamos como costo fijo mensual.
             </Encabezado>
             <div className="flex flex-col gap-5">
+              {esReventa ? (
+                <>
+                  <Campo
+                    idControl="sueldo-mensual"
+                    etiqueta={textosTrabajo.pregunta}
+                    descripcion="Es lo que querés llevarte por tu trabajo, además de cubrir los costos del negocio."
+                    error={mensajeDe("trabajoPropio.sueldoMensual")}
+                    idError="sueldo-mensual-error"
+                  >
+                    <CampoMonto
+                      id="sueldo-mensual"
+                      placeholder="Ej: 300000"
+                      value={trabajoPropio.sueldoMensual}
+                      invalido={Boolean(mensajeDe("trabajoPropio.sueldoMensual"))}
+                      idError="sueldo-mensual-error"
+                      onBlur={() => tocar("trabajoPropio.sueldoMensual")}
+                      onChange={(valor) => actualizarTrabajoPropio({ sueldoMensual: valor })}
+                    />
+                  </Campo>
+                  {tieneTrabajo ? (
+                    <p className="rounded-xl bg-primary-50 px-4 py-3 text-sm text-primary-700" aria-live="polite">
+                      Sueldo mensual esperado = <strong>{formatearMonto(resumen.totalTrabajoPropioMensual)} / mes</strong>
+                    </p>
+                  ) : null}
+                </>
+              ) : (
+                <>
               <Campo
                 idControl="horas-por-lote"
-                etiqueta="¿Cuántas horas le dedicás a cada lote?"
+                etiqueta={textosTrabajo.pregunta}
                 error={mensajeDe("trabajoPropio.horasPorLote")}
                 idError="horas-por-lote-error"
               >
@@ -255,7 +336,7 @@ function Formulario() {
                   aria-expanded={comoCalculo}
                   aria-controls="como-lo-calculo"
                   onClick={() => setComoCalculo((v) => !v)}
-                  className="text-sm font-semibold text-primary-700 underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-primary-600"
+                  className="relative text-sm font-semibold text-primary-700 underline-offset-2 before:absolute before:inset-x-0 before:-inset-y-3 before:content-[''] hover:underline focus-visible:outline-2 focus-visible:outline-primary-600"
                 >
                   {comoCalculo ? "▲" : "▼"} ¿Cómo lo calculo?
                 </button>
@@ -273,10 +354,12 @@ function Formulario() {
               {tieneTrabajo ? (
                 <p className="rounded-xl bg-primary-50 px-4 py-3 text-sm text-primary-700" aria-live="polite">
                   {formatearCantidad(trabajoPropio.horasPorLote)} hs × {formatearMonto(trabajoPropio.valorHora)}/h ×{" "}
-                  {formatearCantidad(calculo.configuracion.lotes)} lotes ={" "}
+                  {formatearCantidad(calculo.configuracion.lotes)} {textosTrabajo.multiplicador} ={" "}
                   <strong>{formatearMonto(resumen.totalTrabajoPropioMensual)} / mes</strong>
                 </p>
               ) : null}
+                </>
+              )}
               <Subtotal etiqueta="Subtotal trabajo propio" valor={formatearMonto(resumen.totalTrabajoPropioMensual)} />
             </div>
           </Tarjeta>
@@ -313,7 +396,7 @@ function Formulario() {
             </div>
           </Tarjeta>
 
-          <div className="flex items-center justify-between gap-4 rounded-2xl bg-primary-600 px-6 py-5 text-white">
+          <div className="flex items-center justify-between gap-4 rounded-2xl bg-primary-900 px-6 py-5 text-white">
             <div>
               <p className="flex items-center gap-2 text-lg font-semibold">Costo Fijo Total / mes</p>
               <p className="text-sm text-primary-100">Gastos + Trabajo + Indirectos</p>
@@ -324,8 +407,9 @@ function Formulario() {
           </div>
 
           <Aviso tono="consejo">
-            El error más frecuente es no incluir el trabajo propio. Si hacés 4 hs por lote y querés ganar $1.500/hs, eso
-            son $6.000 de costo fijo por lote.
+            {esReventa
+              ? "El error más frecuente es no incluir el trabajo propio. Si querés ganar $300.000 al mes, ese monto va como costo fijo y se reparte entre todas tus ventas."
+              : `El error más frecuente es no incluir el trabajo propio. Si hacés 4 hs ${textosTrabajo.consejo} y querés ganar $1.500/hs, eso son $6.000 de costo fijo ${textosTrabajo.consejoFinal}.`}
           </Aviso>
           {advertenciaDe("costosFijos") ? <Aviso tono="advertencia">{advertenciaDe("costosFijos")}</Aviso> : null}
         </div>
@@ -337,26 +421,41 @@ function Formulario() {
               ayuda={
                 <Ayuda
                   sobre="costos variables"
-                  texto="Son los gastos que cambian según cuánto produzcas: materiales, insumos, envases."
-                  ejemplo="la harina, la caja, la etiqueta. Todo lo que se usa por cada unidad que fabricás."
+                  texto={
+                    esReventa
+                      ? "Son los gastos que cambian según cuánto vendas: lo que pagás por cada producto y su packaging."
+                      : "Son los gastos que cambian según cuánto produzcas: materiales, insumos, envases."
+                  }
+                  ejemplo={
+                    esReventa
+                      ? "el precio de compra mayorista de cada termo y la bolsa o caja con la que lo entregás."
+                      : "la harina, la caja, la etiqueta. Todo lo que se usa por cada unidad que fabricás."
+                  }
                 />
               }
             >
-              La harina, la caja, la etiqueta — todo lo que se usa en cada unidad.
+              {esReventa
+                ? "El precio de compra mayorista y el packaging de cada unidad que revendés."
+                : "La harina, la caja, la etiqueta — todo lo que se usa en cada unidad."}
             </Encabezado>
             <div className="mb-4">
               <Aviso tono="consejo">
-                Si una bolsa de harina alcanza para 4 tortas y cuesta $240, poné $60 por unidad.
+                {esReventa
+                  ? "Si comprás una caja de 12 termos a $96.000, el precio de compra por unidad es $8.000. Sumá el packaging de cada uno."
+                  : esLotes
+                    ? "Podés cargar cada insumo por unidad o por lote completo. Si para un lote de 20 velas gastás $20.000 en cera, elegí «por lote completo» y lo dividimos por las 20 unidades: $1.000 por vela."
+                    : "Si una bolsa de harina alcanza para 4 tortas y cuesta $240, poné $60 por unidad."}
               </Aviso>
             </div>
             <ListaConceptos
               idBase="variables"
               filas={filasVariables}
-              nombreFila="insumo"
-              placeholderNombre="Ej: Materia prima"
-              placeholderValor="85"
-              etiquetaAgregar="Agregar insumo o material"
+              nombreFila={esReventa ? "costo de compra" : "insumo"}
+              placeholderNombre={esReventa ? "Ej: Precio de compra mayorista" : "Ej: Materia prima"}
+              placeholderValor={esReventa ? "8000" : "85"}
+              etiquetaAgregar={esReventa ? "Agregar precio de compra o packaging" : "Agregar insumo o material"}
               onCambiar={cambiar("variable")}
+              onCambiarBase={esLotes ? (id, base) => actualizarConcepto("variable", id, { base }) : undefined}
               onEliminar={(id) => eliminarConcepto("variable", id)}
               onAgregar={agregar("variable", filasVariables)}
               errorDe={errorFila("costosVariables", "montoUnitario")}
