@@ -20,7 +20,17 @@ export async function POST(request: Request) {
     const cuerpo = await leerJsonLimitado(request);
     if (!cuerpo.ok) return cuerpo.respuesta;
 
-    const resultado = esquemaCalculo.safeParse(cuerpo.datos);
+    // Aseguramos que la configuración tenga un valor por defecto para 'ruta' si no viene en el body
+    const cuerpoDatos = cuerpo.datos as any;
+    const datosConRuta = {
+      ...cuerpoDatos,
+      configuracion: {
+        ruta: "estandar",
+        ...cuerpoDatos?.configuracion,
+      },
+    };
+
+    const resultado = esquemaCalculo.safeParse(datosConRuta);
     if (!resultado.success) {
       return errorJson(400, "datos_invalidos", "Los datos del cálculo no son válidos.", detallesDeZod(resultado.error));
     }
@@ -33,9 +43,16 @@ export async function POST(request: Request) {
       );
     }
 
-    const creado = await crearCalculo(usuario.id, resultado.data);
+    const creado = await crearCalculo(usuario.id, {
+      ...resultado.data,
+      configuracion: {
+        ...resultado.data.configuracion,
+        ruta: (resultado.data.configuracion as any).ruta ?? "estandar",
+      },
+    } as any);
+
     return NextResponse.json({ ...creado, compartido: true }, { status: 201 });
-  } catch (error) {
+    } catch (error) {
     console.error("POST /api/calculos", error);
     return errorJson(500, "error_interno", "No pudimos guardar el cálculo. Probá de nuevo en un rato.");
   }

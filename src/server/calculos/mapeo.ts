@@ -205,6 +205,7 @@ export function filasACalculo(fila: FilaCalculo, hijas: FilasHijas): Calculo {
       unidadesPorLote: aDominio(fila.unidadesPorLote),
       lotes: aDominio(fila.lotes),
       volumenMensual: aDominio(fila.volumenMensual),
+      ruta: (fila as any).ruta ?? "estandar",
     },
     costosFijos: fijos,
     costosVariables: variables,
@@ -214,6 +215,7 @@ export function filasACalculo(fila: FilaCalculo, hijas: FilasHijas): Calculo {
       horasPorLote: aDominio(fila.trabajoHorasPorLote),
       horasMensuales: aDominio(fila.trabajoHorasMensuales),
       valorHora: aDominio(fila.trabajoValorHora),
+      sueldoMensual: (fila as any).sueldoMensual ?? "0"
     },
     precio: {
       modo: fila.precioModo,

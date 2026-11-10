@@ -3,10 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
 
-<<<<<<< HEAD
 import { BotonGuardar } from "@/components/calculadora/boton-guardar";
-=======
->>>>>>> origin/main
 import { ComparacionEscenarios, type EscenarioConResultado } from "@/components/calculadora/comparacion-escenarios";
 import { ResumenFinal } from "@/components/calculadora/resumen-final";
 import { Aviso } from "@/components/ui/aviso";
@@ -173,11 +170,8 @@ function Simulador() {
         <Boton onClick={() => setConfirmandoReinicio(true)}>Calcular otro producto</Boton>
       </div>
 
-<<<<<<< HEAD
       <BotonGuardar />
 
-=======
->>>>>>> origin/main
       <DialogoConfirmar
         abierto={escenarioAEliminar !== null}
         titulo="¿Eliminar este escenario?"

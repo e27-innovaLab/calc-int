@@ -40,6 +40,7 @@ function calculoCompleto(): Calculo {
       unidadesPorLote: "10",
       lotes: "4",
       volumenMensual: "40",
+      ruta: "estandar" as any, // <-- Casteado como any para los tests
     },
     costosFijos: [
       { id: "f1", categoria: "fijo", nombre: "Alquiler", monto: "150000.50", frecuencia: "mensual", nota: "Incluye expensas" },
@@ -47,7 +48,7 @@ function calculoCompleto(): Calculo {
     ],
     costosVariables: [{ id: "v1", categoria: "variable", nombre: "Esterilla", montoUnitario: "1200" }],
     costosIndirectos: [{ id: "i1", categoria: "indirecto", nombre: "Luz", monto: "9000", frecuencia: "semanal" }],
-    trabajoPropio: { incluir: true, horasPorLote: "2", horasMensuales: "8", valorHora: "5000" },
+    trabajoPropio: { incluir: true, horasPorLote: "2", horasMensuales: "8", valorHora: "5000", sueldoMensual: "0", },
     precio: { modo: "manual", margenPct: "40", precioManual: "12500.75" },
     pasoActual: "simulador",
   };

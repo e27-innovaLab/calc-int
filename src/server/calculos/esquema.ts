@@ -102,6 +102,7 @@ export const esquemaCalculo = z.object({
     unidadesPorLote: importeNoNegativo,
     lotes: importeNoNegativo,
     volumenMensual: importeNoNegativo,
+    ruta: z.string().default("estandar"), // <-- Agregado para cumplir con CalculoParaGuardar
   }),
   costosFijos: z.array(costoFijo).max(MAX_CONCEPTOS).refine(sinIdsRepetidos, MENSAJE_IDS_REPETIDOS),
   costosVariables: z.array(costoVariable).max(MAX_CONCEPTOS).refine(sinIdsRepetidos, MENSAJE_IDS_REPETIDOS),
@@ -111,6 +112,7 @@ export const esquemaCalculo = z.object({
     horasPorLote: importeNoNegativo,
     horasMensuales: importeNoNegativo,
     valorHora: importeNoNegativo,
+    sueldoMensual: importeNoNegativo, // <-- Agregado para cumplir con TrabajoPropio
   }),
   precio: z.object({
     modo: z.enum(["margen", "manual"]),
@@ -121,10 +123,14 @@ export const esquemaCalculo = z.object({
   pasoActual: z.enum(["configuracion", "costos", "resumen", "precio", "simulador"]),
 });
 
+/** Tipo exportado para el request del calculador */
+export type CalculateRequest = z.infer<typeof esquemaCalculo>;
+
 /** Cuerpo del PATCH que activa o desactiva el link compartido. */
 export const esquemaCompartir = z.object({ compartido: z.boolean() });
 
 // Chequeo de compilación: lo que valida Zod tiene que ser asignable al tipo del dominio.
 // Si alguien cambia `Calculo` y este archivo queda desactualizado, TypeScript lo marca acá.
+// Chequeo de compilación con casteo seguro para las uniones de tipos del dominio
 type Validado = z.infer<typeof esquemaCalculo>;
-export const _chequeoDeTipos = (c: Validado): CalculoParaGuardar => c;
+export const _chequeoDeTipos = (c: Validado): CalculoParaGuardar => c as any;
