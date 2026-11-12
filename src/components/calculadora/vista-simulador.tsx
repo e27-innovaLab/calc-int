@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
 
+import { BotonGuardar } from "@/components/calculadora/boton-guardar";
 import { ComparacionEscenarios, type EscenarioConResultado } from "@/components/calculadora/comparacion-escenarios";
 import { ResumenFinal } from "@/components/calculadora/resumen-final";
 import { Aviso } from "@/components/ui/aviso";
@@ -168,6 +169,8 @@ function Simulador() {
         </BotonLink>
         <Boton onClick={() => setConfirmandoReinicio(true)}>Calcular otro producto</Boton>
       </div>
+
+      <BotonGuardar />
 
       <DialogoConfirmar
         abierto={escenarioAEliminar !== null}
