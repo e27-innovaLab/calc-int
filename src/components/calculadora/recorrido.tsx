@@ -54,6 +54,7 @@ function BotonReiniciar({ alReiniciar }: { alReiniciar: () => void }) {
         icono={<span className="text-lg leading-none">↻</span>}
         onCancelar={() => setConfirmando(false)}
         onConfirmar={() => {
+          setConfirmando(false);
           reiniciar();
           alReiniciar();
           router.push("/calculadora/producto");
