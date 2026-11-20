@@ -1,46 +1,61 @@
-# calc-int
+# calc-int — PRECIAR
 
-Calculadora inteligente de costos, precios y punto de equilibrio para emprendimientos.
+Calculadora de costos, precios y punto de equilibrio para emprendimientos. Recorrido guiado en
+5 pasos, con cuentas, guardado de cálculos y enlaces para compartir.
 
-## Stack
+**Stack:** Next.js 16 · React 19 · TypeScript · Tailwind v4 · zustand · Zod · decimal.js · Vitest.
+Backend opcional: Drizzle + PostgreSQL (Neon) + Better Auth + envío de mails por SMTP.
 
-- **Next.js 16** (App Router) + **React 19** + **TypeScript**
-- **Tailwind CSS v4** para estilos
-- **react-hook-form** + **zod** para formularios y validación
-- **decimal.js** para cálculos monetarios (nunca operar importes con `number`)
-- **zustand** para el estado del recorrido
-- **Vitest** para pruebas unitarias
+## Requisitos
 
-## Cómo correrlo
+- Node.js 20.9+ (recomendado 22 LTS) y npm.
+
+## Correr el proyecto
 
 ```bash
+git clone <URL-DEL-REPO>
+cd calc-int
 npm install
 npm run dev        # http://localhost:3000
-npm test           # pruebas unitarias
-npm run lint
-npm run build
 ```
 
-Requiere Node 20.9 o superior.
+El recorrido y el cálculo funcionan **sin base de datos** (se guarda en el navegador).
 
-## Estructura
+Otros comandos: `npm test` · `npm run lint` · `npm run build`
 
+## Guardar, compartir y cuentas (opcional)
+
+Solo si querés la persistencia y el login. Creá un `.env.local` en la raíz:
+
+```bash
+DATABASE_URL=postgresql://...            # Neon (cadena "pooled")
+BETTER_AUTH_SECRET=...                    # 32+ chars: node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+BETTER_AUTH_URL=http://localhost:3000     # en prod, la URL pública
+# Envío de mails (verificación y reseteo). Sin esto, en desarrollo el enlace se imprime en la consola.
+GMAIL_USER=tu-cuenta@gmail.com
+GMAIL_APP_PASSWORD=clave-de-aplicacion-16-letras
+MAIL_FROM_NOMBRE=PRECIAR
 ```
-src/
-  app/              Páginas y layout (Next.js App Router)
-  domain/
-    types.ts        Tipos del dominio: configuración, costos, trabajo propio, resultados
-    motor/          Motor de cálculo: funciones puras, sin React, con sus *.test.ts
+
+Después creá las tablas:
+
+```bash
+npm run db:push
 ```
 
-Regla principal: **las fórmulas viven en `src/domain/motor/`, separadas de la interfaz**, y cada función tiene su prueba unitaria. Los componentes solo muestran resultados.
+> `npm run db:push` hay que correrlo la primera vez **y cada vez que cambia el esquema**, contra la
+> base que uses (local o la del deploy). Si la app compila pero algo falla al guardar o al registrarse,
+> casi siempre faltó este paso. Detalle del login y el mail en `docs/login-y-mail.md`.
 
-## Convenciones
+## Notas (warnings y demás)
 
-- Los importes se guardan como `string` (`"1250.50"`) y se operan con Decimal.js. El redondeo a 2 decimales y el formato ($ 1.250,50) son solo visuales, al mostrar.
-- Moneda: solo **ARS** en el MVP.
-- Período: el motor es **estrictamente mensual**. Si la interfaz permite cargar importes semanales o anuales, se normalizan con `aMensual()` (semanal × 4, anual ÷ 12) antes de calcular.
-- Clasificación de costos para no contabilizar dos veces:
-  - **Variables** (base unidad): solo insumos directamente atribuibles a cada unidad.
-  - **Fijos** e **indirectos** (base mensual): los indirectos se tratan como fijos del mes, sin prorrateo por unidad.
-- Cambios por rama + Pull Request a `main`.
+- **"N moderate vulnerabilities" al instalar:** vienen de herramientas de desarrollo (drizzle-kit) y
+  **no afectan producción**. Se pueden ignorar. No corras `npm audit fix --force` (rompe las migraciones).
+- **Avisos `deprecated` / `npm warn`:** son informativos, no errores. Si `npm run dev` levanta, está todo bien.
+- **En desarrollo, "compiling" lento la primera vez:** es normal; Next compila cada página al visitarla.
+  Si se queda clavado, parar el server, `rm -rf .next` y volver a `npm run dev`.
+
+## Más documentación
+
+En `docs/`: backend y endpoints (`backend.md`), base de datos (`esquema.sql`), seguridad, login/mail y backups.
+
