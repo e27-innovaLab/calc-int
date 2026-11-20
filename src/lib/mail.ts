@@ -15,7 +15,7 @@ import "server-only";
  * Variables:
  *   GMAIL_USER           la dirección de Gmail del proyecto (ej. precijusto@gmail.com).
  *   GMAIL_APP_PASSWORD   la contraseña de aplicación de 16 caracteres (NO la contraseña normal).
- *   MAIL_FROM_NOMBRE     opcional, nombre que se muestra como remitente (por defecto "PreciJusto").
+ *   MAIL_FROM_NOMBRE     opcional, nombre que se muestra como remitente (por defecto "PRECIAR").
  */
 interface Mail {
   to: string;
@@ -31,7 +31,7 @@ export function mailConfigurado(): boolean {
 export async function enviarMail({ to, subject, html }: Mail): Promise<void> {
   const user = process.env.GMAIL_USER;
   const pass = process.env.GMAIL_APP_PASSWORD;
-  const nombre = process.env.MAIL_FROM_NOMBRE ?? "PreciJusto";
+  const nombre = process.env.MAIL_FROM_NOMBRE ?? "PRECIAR";
 
   if (!user || !pass) {
     // Fallback de desarrollo: no se manda nada, se registra para poder seguir el link a mano.
