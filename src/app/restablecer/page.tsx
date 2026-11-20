@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 
 import { resetPassword } from "@/lib/auth-client";
+import { mensajeDeError } from "@/lib/errores-auth";
 import { REQUISITOS_PASSWORD, validarPassword } from "@/lib/password";
 
 /**
@@ -22,6 +23,7 @@ function Formulario() {
   const [password2, setPassword2] = useState("");
   const [error, setError] = useState("");
   const [guardando, setGuardando] = useState(false);
+  const [ver, setVer] = useState(false);
 
   if (!token || errorToken) {
     return (
@@ -42,22 +44,32 @@ function Formulario() {
     setGuardando(true);
     const { error: err } = await resetPassword({ newPassword: password, token: token! });
     setGuardando(false);
-    if (err) return setError(err.message ?? "No se pudo cambiar la contraseña.");
+    if (err) return setError(mensajeDeError(err));
     router.replace("/test_de_guardado");
   }
 
   return (
     <form onSubmit={enviar} className="flex flex-col gap-3">
+      <div className="relative">
+        <input
+          className="w-full rounded border p-2 pr-10"
+          type={ver ? "text" : "password"}
+          placeholder="Nueva contraseña"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+        <button
+          type="button"
+          onClick={() => setVer((v) => !v)}
+          aria-label={ver ? "Ocultar contraseña" : "Mostrar contraseña"}
+          className="absolute inset-y-0 right-0 flex items-center px-3 text-lg"
+        >
+          {ver ? "🙈" : "👁️"}
+        </button>
+      </div>
       <input
         className="rounded border p-2"
-        type="password"
-        placeholder="Nueva contraseña"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-      />
-      <input
-        className="rounded border p-2"
-        type="password"
+        type={ver ? "text" : "password"}
         placeholder="Repetir contraseña"
         value={password2}
         onChange={(e) => setPassword2(e.target.value)}

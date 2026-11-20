@@ -40,7 +40,7 @@ function crearAuth() {
       sendResetPassword: async ({ user: u, url }) => {
         await enviarMail({
           to: u.email,
-          subject: "Restablecé tu contraseña — PreciJusto",
+          subject: "Restablecé tu contraseña — PRECIAR",
           html: plantillaMail(
             "Restablecer contraseña",
             "Pediste restablecer tu contraseña. El enlace vence en 1 hora.",
@@ -56,7 +56,7 @@ function crearAuth() {
       sendVerificationEmail: async ({ user: u, url }) => {
         await enviarMail({
           to: u.email,
-          subject: "Confirmá tu email — PreciJusto",
+          subject: "Confirmá tu email — PRECIAR",
           html: plantillaMail(
             "Confirmá tu email",
             `Hola${u.name ? ` ${u.name}` : ""}, confirmá tu dirección para activar tu cuenta.`,

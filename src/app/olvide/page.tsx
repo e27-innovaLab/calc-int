@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { requestPasswordReset } from "@/lib/auth-client";
+import { esEmailValido } from "@/lib/password";
 
 /**
  * "Olvidé mi contraseña": el usuario ingresa su email y recibe un enlace para restablecerla.
@@ -15,8 +16,12 @@ export default function OlvidePassword() {
   const [enviando, setEnviando] = useState(false);
   const [listo, setListo] = useState(false);
 
+  const [error, setError] = useState("");
+
   async function enviar(e: React.FormEvent) {
     e.preventDefault();
+    if (!esEmailValido(email)) return setError("El email no es válido.");
+    setError("");
     setEnviando(true);
     // redirectTo: adónde lleva el enlace del mail (con ?token=...).
     await requestPasswordReset({ email, redirectTo: "/restablecer" });
@@ -46,6 +51,7 @@ export default function OlvidePassword() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
+        {error ? <p className="text-sm text-red-700">{error}</p> : null}
         <button className="rounded bg-black px-3 py-2 text-white" disabled={enviando}>
           {enviando ? "Enviando…" : "Enviarme el enlace"}
         </button>
