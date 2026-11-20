@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { enlaceCompartido, guardarCalculo, rutaCompartida, type ResultadoGuardado } from "@/lib/api-calculos";
-import { signIn, signOut, signUp, useSession } from "@/lib/auth-client";
+import { sendVerificationEmail, signIn, signOut, signUp, useSession } from "@/lib/auth-client";
+import { REQUISITOS_PASSWORD, validarPassword } from "@/lib/password";
 import { useCalculoStore } from "@/store/calculo-store";
 
 /**
@@ -20,13 +21,27 @@ export default function PruebaDeGuardado() {
   const [resultado, setResultado] = useState<ResultadoGuardado | null>(null);
 
   async function registrar() {
+    const problema = validarPassword(password);
+    if (problema) return setMensaje(problema);
     const { error } = await signUp.email({ email, password, name: email.split("@")[0] });
-    setMensaje(error ? `Error: ${error.message}` : "Cuenta creada y sesión iniciada.");
+    setMensaje(
+      error
+        ? `Error: ${error.message}`
+        : "Cuenta creada. Te enviamos un email para confirmar tu dirección (en desarrollo sin Gmail configurado, el enlace aparece en la consola del servidor). Confirmá y después iniciá sesión.",
+    );
   }
 
   async function entrar() {
     const { error } = await signIn.email({ email, password });
-    setMensaje(error ? `Error: ${error.message}` : "Sesión iniciada.");
+    if (!error) return setMensaje("Sesión iniciada.");
+    const sinVerificar = /verif/i.test(error.message ?? "") || (error as { status?: number }).status === 403;
+    setMensaje(sinVerificar ? "Tenés que confirmar tu email antes de entrar. Revisá tu correo." : `Error: ${error.message}`);
+  }
+
+  async function reenviarConfirmacion() {
+    if (!email) return setMensaje("Escribí tu email arriba primero.");
+    await sendVerificationEmail({ email, callbackURL: "/test_de_guardado" });
+    setMensaje("Te reenviamos el email de confirmación.");
   }
 
   async function guardar() {
@@ -47,14 +62,19 @@ export default function PruebaDeGuardado() {
       <input
         className="rounded border p-2"
         type="password"
-        placeholder="contraseña (mínimo 8)"
+        placeholder="contraseña"
         value={password}
         onChange={(e) => setPassword(e.target.value)}
       />
+      <p className="text-xs text-gray-600">Requisitos: {REQUISITOS_PASSWORD.join(" · ")}</p>
       <div className="flex gap-2">
         <button className="rounded border px-3 py-1" onClick={registrar}>Crear cuenta</button>
         <button className="rounded border px-3 py-1" onClick={entrar}>Entrar</button>
         <button className="rounded border px-3 py-1" onClick={() => signOut()}>Salir</button>
+      </div>
+      <div className="flex gap-4 text-sm">
+        <Link className="underline" href="/olvide">¿Olvidaste tu contraseña?</Link>
+        <button className="underline" onClick={reenviarConfirmacion}>Reenviar confirmación</button>
       </div>
       {mensaje ? <p>{mensaje}</p> : null}
 
