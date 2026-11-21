@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Backup de la base de datos (PostgreSQL) a DOS destinos: Amazon S3 y Cloudflare R2.
+# Backup de la base de datos (PostgreSQL) a DOS destinos: Backblaze B2 y Cloudflare R2.
 #
 # Cada ejecución:
 #   1. Hace un pg_dump comprimido (formato custom, nivel 9) y comprueba que sea legible.
@@ -11,15 +11,15 @@
 #
 # Variables (en GitHub: Settings → Secrets and variables → Actions):
 #   BACKUP_DATABASE_URL                      conexión DIRECTA de Neon (sin "-pooler" en el host)
-#   S3_BUCKET, S3_REGION, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY
+#   B2_BUCKET, B2_REGION (ej. us-west-004), B2_KEY_ID, B2_APP_KEY
 #   R2_BUCKET, R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY
 # Opcionales: BACKUP_PREFIJO (por defecto "calc-int"), PG_BIN (carpeta con pg_dump), FECHA_BACKUP (AAAA-MM-DD, para pruebas).
 
 set -euo pipefail
 
 : "${BACKUP_DATABASE_URL:?Falta BACKUP_DATABASE_URL}"
-: "${S3_BUCKET:?Falta S3_BUCKET}" "${S3_REGION:?Falta S3_REGION}"
-: "${S3_ACCESS_KEY_ID:?Falta S3_ACCESS_KEY_ID}" "${S3_SECRET_ACCESS_KEY:?Falta S3_SECRET_ACCESS_KEY}"
+: "${B2_BUCKET:?Falta B2_BUCKET}" "${B2_REGION:?Falta B2_REGION}"
+: "${B2_KEY_ID:?Falta B2_KEY_ID}" "${B2_APP_KEY:?Falta B2_APP_KEY}"
 : "${R2_BUCKET:?Falta R2_BUCKET}" "${R2_ACCOUNT_ID:?Falta R2_ACCOUNT_ID}"
 : "${R2_ACCESS_KEY_ID:?Falta R2_ACCESS_KEY_ID}" "${R2_SECRET_ACCESS_KEY:?Falta R2_SECRET_ACCESS_KEY}"
 
@@ -51,9 +51,13 @@ TAMANO="$(stat -c %s "$ARCHIVO")"
 echo "   OK: $TAMANO bytes, legible."
 
 # Un wrapper de `aws` por destino. Las credenciales se pasan solo a ese comando.
-aws_s3() {
-  AWS_ACCESS_KEY_ID="$S3_ACCESS_KEY_ID" AWS_SECRET_ACCESS_KEY="$S3_SECRET_ACCESS_KEY" \
-    AWS_DEFAULT_REGION="$S3_REGION" aws "$@"
+aws_b2() {
+  # Backblaze B2 es compatible con S3. El endpoint se arma con la región (ej. us-west-004).
+  # Se desactivan los checksums extra de las versiones nuevas de la CLI, que B2 puede rechazar.
+  AWS_ACCESS_KEY_ID="$B2_KEY_ID" AWS_SECRET_ACCESS_KEY="$B2_APP_KEY" \
+    AWS_DEFAULT_REGION="$B2_REGION" AWS_REQUEST_CHECKSUM_CALCULATION=when_required \
+    AWS_RESPONSE_CHECKSUM_VALIDATION=when_required \
+    aws --endpoint-url "https://s3.${B2_REGION}.backblazeb2.com" "$@"
 }
 aws_r2() {
   # R2 no acepta los checksums extra que agregan las versiones nuevas de la CLI de AWS.
@@ -116,11 +120,11 @@ procesar_destino() { # procesar_destino <nombre> <wrapper> <bucket>
 }
 
 FALLOS=0
-procesar_destino "S3" aws_s3 "$S3_BUCKET" || { echo "FALLÓ el destino S3"; FALLOS=$((FALLOS + 1)); }
+procesar_destino "B2" aws_b2 "$B2_BUCKET" || { echo "FALLÓ el destino B2"; FALLOS=$((FALLOS + 1)); }
 procesar_destino "R2" aws_r2 "$R2_BUCKET" || { echo "FALLÓ el destino R2"; FALLOS=$((FALLOS + 1)); }
 
 if [ "$FALLOS" -gt 0 ]; then
   echo "Backup incompleto: falló $FALLOS de 2 destinos."
   exit 1
 fi
-echo "Backup completo en S3 y R2."
+echo "Backup completo en B2 y R2."
