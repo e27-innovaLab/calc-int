@@ -1,5 +1,6 @@
 "use client";
 
+import Decimal from "decimal.js";
 import { useId } from "react";
 
 import { Aviso } from "@/components/ui/aviso";
@@ -12,18 +13,36 @@ import { Tarjeta } from "@/components/ui/tarjeta";
 import { MARGEN_MAXIMO_PCT, nivelDeMargen, precioPorMargen, type NivelMargen } from "@/domain/motor/precio";
 import { useAnalisisPrecio } from "@/hooks/use-analisis-precio";
 import { useHidratado } from "@/hooks/use-hidratado";
-import { formatearCantidad, formatearMonto, formatearPorcentaje } from "@/lib/formato";
+import { formatearCantidad, formatearMonto, formatearPorcentaje, formatearUnidades } from "@/lib/formato";
 import type { ModoPrecio } from "@/domain/types";
 import { useCalculoStore } from "@/store/calculo-store";
 
 const MARGEN_RECOMENDADO = 40;
 
-const MENSAJES_MARGEN: Record<NivelMargen, { texto: string; bueno: boolean }> = {
+// El margen «alto» (60 % o más) ya no sale en verde: se muestra aparte como advertencia (ver AvisoMargenAlto).
+const MENSAJES_MARGEN: Record<Exclude<NivelMargen, "alto">, { texto: string; bueno: boolean }> = {
   "muy-bajo": { texto: "Margen muy bajo: cualquier imprevisto te puede hacer perder plata.", bueno: false },
   bajo: { texto: "Margen ajustado: alcanza, pero con poco colchón para imprevistos.", bueno: false },
   bueno: { texto: "Buen margen para sostener el negocio y tener colchón para imprevistos.", bueno: true },
-  alto: { texto: "Margen alto: revisá que tus clientes acepten ese precio.", bueno: true },
 };
+
+/**
+ * Cuántas veces el costo unitario queda el precio con este margen: 100 ÷ (100 − margen).
+ * Solo para el texto del aviso: es la misma relación que usa el motor (costo ÷ (1 − margen)), no calcula ningún precio.
+ * Ej.: 60 % → 2,5; 90 % → 10; 99 % → 100.
+ */
+function vecesElCosto(margen: number): string {
+  return new Decimal(100).div(new Decimal(100).minus(margen)).toString();
+}
+
+function AvisoMargenAlto({ margen }: { margen: number }) {
+  return (
+    <Aviso tono="advertencia" titulo="Margen alto">
+      Con un margen del {margen}%, tu precio de venta queda en <strong>{formatearCantidad(vecesElCosto(margen))} veces</strong>{" "}
+      tu costo por unidad. Revisá que tus clientes estén dispuestos a pagarlo.
+    </Aviso>
+  );
+}
 
 const PESTAÑAS: { modo: ModoPrecio; etiqueta: string }[] = [
   { modo: "margen", etiqueta: "Precio por margen" },
@@ -156,7 +175,9 @@ function Precio() {
               />
             </div>
 
-            {nivel ? (
+            {nivel === "alto" ? (
+              <AvisoMargenAlto margen={margen} />
+            ) : nivel ? (
               <p className={`flex items-start gap-1.5 text-sm font-medium ${MENSAJES_MARGEN[nivel].bueno ? "text-success-700" : "text-warning-700"}`}>
                 <span aria-hidden="true">{MENSAJES_MARGEN[nivel].bueno ? "✓" : "⚠"}</span>
                 <span>{MENSAJES_MARGEN[nivel].texto}</span>
@@ -319,13 +340,13 @@ function Resultados({
             </div>
             {analisis.puntoEquilibrioUnidades ? (
               <>
-                <p className="mt-1 text-3xl font-extrabold">{formatearCantidad(analisis.puntoEquilibrioUnidades)} unidades</p>
+                <p className="mt-1 text-3xl font-extrabold">{formatearUnidades(analisis.puntoEquilibrioUnidades)}</p>
                 <p className="mt-1 text-sm text-gray-200">Facturación mínima: {formatearMonto(analisis.facturacionMinima)}</p>
                 {sinCostosFijos ? null : (
                   <ComoSeCalcula
                     tono="oscuro"
                     formula="Costo fijo total ÷ contribución por unidad, redondeado hacia arriba (no se puede vender media unidad)"
-                    cuenta={`${formatearMonto(costoFijo)} ÷ ${formatearMonto(analisis.contribucion)} → ${formatearCantidad(analisis.puntoEquilibrioUnidades)} unidades`}
+                    cuenta={`${formatearMonto(costoFijo)} ÷ ${formatearMonto(analisis.contribucion)} → ${formatearUnidades(analisis.puntoEquilibrioUnidades)}`}
                   />
                 )}
               </>
@@ -356,7 +377,7 @@ function Resultados({
                 : "Necesitás aumentar el volumen o el precio para cubrir tus costos fijos."}
           </p>
         )}
-        {volumen ? <p className="sr-only">Producís {formatearCantidad(volumen)} unidades por mes.</p> : null}
+        {volumen ? <p className="sr-only">Producís {formatearUnidades(volumen)} por mes.</p> : null}
       </section>
 
       {/* En Figma el gráfico va a todo el ancho, debajo del punto de equilibrio. */}
