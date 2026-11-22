@@ -1,8 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { CONFIGURACION_INICIAL, type Calculo } from "@/domain/types";
 
-import { armarPayloadPdf } from "./exportar-pdf";
+import { armarPayloadPdf, descargarPdfDelServidor } from "./exportar-pdf";
 
 // Torta del diseño: 120 u/mes, CFT $496.200, CVU $85, precio $7.033,33 (margen 40 %).
 const torta: Calculo = {
@@ -36,5 +36,30 @@ describe("armarPayloadPdf", () => {
 
   it("sin precio calculable no arma nada (el botón usa la impresión del navegador)", () => {
     expect(armarPayloadPdf({ ...torta, configuracion: { ...torta.configuracion, volumenMensual: "" , lotes: "" } })).toBeNull();
+  });
+});
+
+describe("descargarPdfDelServidor", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("envía el Calculo completo (lo que valida el endpoint), no el resumen", async () => {
+    const fetchFalso = vi.fn().mockResolvedValue({ status: 400, ok: false });
+    vi.stubGlobal("fetch", fetchFalso);
+    const resultado = await descargarPdfDelServidor(torta);
+    expect(resultado).toBe("no-disponible");
+    const [url, opciones] = fetchFalso.mock.calls[0];
+    expect(url).toBe("/api/calculos/exportar-pdf");
+    const cuerpo = JSON.parse(opciones.body as string);
+    expect(cuerpo.configuracion.nombre).toBe("Torta");
+    expect(cuerpo.costosFijos).toHaveLength(1);
+    expect(cuerpo.nombreProducto).toBeUndefined();
+  });
+
+  it("sin precio calculable no llama al servidor", async () => {
+    const fetchFalso = vi.fn();
+    vi.stubGlobal("fetch", fetchFalso);
+    const sinPrecio = { ...torta, configuracion: { ...torta.configuracion, volumenMensual: "", lotes: "" } };
+    expect(await descargarPdfDelServidor(sinPrecio)).toBe("no-disponible");
+    expect(fetchFalso).not.toHaveBeenCalled();
   });
 });

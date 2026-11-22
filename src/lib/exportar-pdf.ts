@@ -4,7 +4,11 @@ import { simularVariaciones } from "@/domain/motor/escenarios";
 import { analizarPrecio, precioElegido } from "@/domain/motor/precio";
 import type { Calculo } from "@/domain/types";
 
-/** Cuerpo que espera `POST /api/calculos/exportar-pdf` (ver `validaciones/exportar-pdf.ts` del backend). */
+/**
+ * Resumen numérico del cálculo (para decidir si hay algo que exportar y para nombrar el archivo).
+ * OJO: lo que se envía a `POST /api/calculos/exportar-pdf` es el `Calculo` completo: el endpoint lo valida con
+ * `esquemaCalculo` y arma el informe con el motor en el servidor.
+ */
 export interface PayloadExportarPdf {
   nombreProducto: string;
   ruta: string;
@@ -111,17 +115,23 @@ function nombreArchivoPdf(producto: string): string {
 
 /**
  * Pide al servidor el informe detallado en PDF (solo con sesión iniciada) y lo descarga.
+ * Antes comprueba con `armarPayloadPdf` que haya precio y análisis calculables.
  * Si el servidor no responde bien (sin sesión, endpoint no publicado o error), devuelve el motivo para que la pantalla
  * use la impresión del navegador y la persona no se quede sin su resumen.
  */
 export async function descargarPdfDelServidor(calculo: Calculo): Promise<ResultadoPdfServidor> {
   const payload = armarPayloadPdf(calculo);
   if (!payload) return "no-disponible";
+  // Si el servidor no responde, no se deja a la persona esperando: a los 45 s se usa la impresión del navegador.
+  const control = new AbortController();
+  const temporizador = setTimeout(() => control.abort(), 45_000);
   try {
     const respuesta = await fetch("/api/calculos/exportar-pdf", {
+      signal: control.signal,
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
+      // El servidor valida el cuerpo con `esquemaCalculo` (el Calculo completo), no con el resumen de `armarPayloadPdf`.
+      body: JSON.stringify(calculo),
     });
     if (respuesta.status === 401) return "sin-sesion";
     if (!respuesta.ok) return "no-disponible";
@@ -135,5 +145,7 @@ export async function descargarPdfDelServidor(calculo: Calculo): Promise<Resulta
     return "descargado";
   } catch {
     return "no-disponible";
+  } finally {
+    clearTimeout(temporizador);
   }
 }
