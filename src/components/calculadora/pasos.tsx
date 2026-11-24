@@ -26,7 +26,7 @@ export function Pasos() {
   return (
     <nav aria-label="Pasos del cálculo">
       {hayPaso ? (
-        <div className="sm:hidden">
+        <div className="md:hidden">
           <p className="text-sm font-semibold text-primary-900">
             Paso {actual + 1} de {PASOS.length}: {PASOS[actual].etiqueta}
           </p>
@@ -38,7 +38,7 @@ export function Pasos() {
           </div>
         </div>
       ) : null}
-      <ol className={`${hayPaso ? "hidden sm:flex" : "flex"} items-center gap-1 sm:gap-2`}>
+      <ol className={`${hayPaso ? "hidden md:flex" : "flex"} items-center gap-1 sm:gap-2`}>
         {PASOS.map((paso, i) => {
           const esActual = i === actual;
           const completado = actual > i;
@@ -57,7 +57,7 @@ export function Pasos() {
                 {completado ? "✓" : i + 1}
               </span>
               <span
-                className={`text-sm font-semibold ${esActual ? "" : "hidden sm:inline"} ${
+                className={`text-sm font-semibold ${esActual ? "" : "hidden md:inline"} ${
                   esActual || completado ? "text-primary-900" : "text-gray-500"
                 }`}
               >
@@ -85,7 +85,7 @@ export function Pasos() {
                 </span>
               )}
               {i < PASOS.length - 1 ? (
-                <span aria-hidden="true" className="hidden h-px w-4 bg-gray-400 sm:block" />
+                <span aria-hidden="true" className="hidden h-px w-4 bg-gray-400 md:block" />
               ) : null}
             </li>
           );

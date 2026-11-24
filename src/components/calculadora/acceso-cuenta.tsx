@@ -47,7 +47,7 @@ export function AccesoCuenta() {
       <Link href="/cuenta" className={`${ENLACE} inline-flex min-h-11 items-center`}>
         Iniciar sesión
       </Link>
-      <BotonLink href="/cuenta?modo=crear" variante="secundario" className="hidden px-5 sm:inline-flex">
+      <BotonLink href="/cuenta?modo=crear" variante="secundario" className="px-5 max-sm:hidden">
         Crear cuenta
       </BotonLink>
     </div>

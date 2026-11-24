@@ -179,7 +179,7 @@ function CabeceraHome() {
         <Link href="/" aria-label="Preciar, ir al inicio" className="rounded-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary-700">
           <Logo />
         </Link>
-        <nav aria-label="Secciones" className="hidden md:block">
+        <nav aria-label="Secciones" className="hidden lg:block">
           <ul className="flex items-center gap-8 text-sm text-gray-900">
             {SECCIONES.map((s) => (
               <li key={s.href}>
@@ -196,7 +196,7 @@ function CabeceraHome() {
         <div className="flex items-center gap-3 sm:gap-5">
           <AccesoCuenta />
           <BotonLink href="/calculadora/producto" className="px-4 sm:px-6">
-            Empezar mi cálculo
+            Empezar<span className="sr-only sm:not-sr-only">&nbsp;mi cálculo</span>
           </BotonLink>
         </div>
       </div>
