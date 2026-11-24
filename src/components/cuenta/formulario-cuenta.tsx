@@ -8,9 +8,11 @@ import { Aviso } from "@/components/ui/aviso";
 import { Boton, BotonLink } from "@/components/ui/boton";
 import { Campo, clasesCampo } from "@/components/ui/campo";
 import { Tarjeta } from "@/components/ui/tarjeta";
-import { signIn, signOut, signUp, useSession } from "@/lib/auth-client";
+import { sendVerificationEmail, signIn, signOut, signUp, useSession } from "@/lib/auth-client";
 import {
   LARGO_MINIMO_CONTRASENA,
+  crearCuentaPideVerificar,
+  faltaVerificarEmail,
   mensajeDeErrorDeCuenta,
   nombreDesdeEmail,
   validarCuenta,
@@ -52,6 +54,9 @@ export function FormularioCuenta({ destino, modoInicial, googleHabilitado }: Pro
   const [errores, setErrores] = useState<ErroresCuenta>({});
   const [errorServidor, setErrorServidor] = useState("");
   const [enviando, setEnviando] = useState(false);
+  /** Email al que se mandó (o hay que mandar) el enlace de confirmación; si hay valor, se muestra "Revisá tu correo". */
+  const [pendienteDeVerificar, setPendienteDeVerificar] = useState<string | null>(null);
+  const [reenvio, setReenvio] = useState<"inactivo" | "enviando" | "enviado" | "error">("inactivo");
   const refEmail = useRef<HTMLInputElement>(null);
   const refPassword = useRef<HTMLInputElement>(null);
   const id = useId();
@@ -79,12 +84,24 @@ export function FormularioCuenta({ destino, modoInicial, googleHabilitado }: Pro
     setEnviando(true);
     const correo = email.trim();
     try {
-      const { error } =
+      const { data, error } =
         modo === "entrar"
           ? await signIn.email({ email: correo, password })
           : await signUp.email({ email: correo, password, name: nombreDesdeEmail(correo) });
       if (error) {
+        // Cuenta sin confirmar: en vez de un error, se ofrece reenviar el mail.
+        if (modo === "entrar" && faltaVerificarEmail(error)) {
+          setReenvio("inactivo");
+          setPendienteDeVerificar(correo);
+          return;
+        }
         setErrorServidor(mensajeDeErrorDeCuenta(error));
+        return;
+      }
+      // Con verificación obligatoria, crear la cuenta no abre sesión: hay que confirmar el email primero.
+      if (modo === "crear" && crearCuentaPideVerificar(data)) {
+        setReenvio("inactivo");
+        setPendienteDeVerificar(correo);
         return;
       }
       router.replace(destino);
@@ -94,6 +111,26 @@ export function FormularioCuenta({ destino, modoInicial, googleHabilitado }: Pro
     } finally {
       setEnviando(false);
     }
+  }
+
+  /** Vuelve a mandar el mail de confirmación a la dirección pendiente. */
+  async function reenviarConfirmacion() {
+    if (!pendienteDeVerificar || reenvio === "enviando") return;
+    setReenvio("enviando");
+    try {
+      const { error } = await sendVerificationEmail({ email: pendienteDeVerificar, callbackURL: destino });
+      setReenvio(error ? "error" : "enviado");
+    } catch {
+      setReenvio("error");
+    }
+  }
+
+  function volverAlFormulario() {
+    setPendienteDeVerificar(null);
+    setReenvio("inactivo");
+    setModo("entrar");
+    setErrores({});
+    setErrorServidor("");
   }
 
   async function conGoogle() {
@@ -134,6 +171,31 @@ export function FormularioCuenta({ destino, modoInicial, googleHabilitado }: Pro
             }}
           >
             Cerrar sesión
+          </Boton>
+        </div>
+      </Tarjeta>
+    );
+  }
+
+  if (pendienteDeVerificar) {
+    return (
+      <Tarjeta className="flex flex-col gap-4">
+        <h1 className="text-2xl font-bold text-primary-900">Revisá tu correo</h1>
+        <p className="text-base text-gray-700">
+          Para activar tu cuenta, confirmá tu email con el enlace que enviamos a{" "}
+          <strong className="break-all">{pendienteDeVerificar}</strong>. Cuando lo hagas, ya podés iniciar sesión.
+        </p>
+        <p className="text-sm text-gray-700">Si no lo ves, mirá en spam o correo no deseado.</p>
+        <div role="status" aria-live="polite" className="min-h-6 text-sm text-gray-700">
+          {reenvio === "enviado" ? "Listo, te mandamos el mail de nuevo." : null}
+          {reenvio === "error" ? "No pudimos reenviarlo. Esperá un momento y probá de nuevo." : null}
+        </div>
+        <div className="flex flex-wrap gap-3">
+          <Boton onClick={reenviarConfirmacion} disabled={reenvio === "enviando"}>
+            {reenvio === "enviando" ? "Enviando…" : "Reenviar el mail"}
+          </Boton>
+          <Boton variante="secundario" onClick={volverAlFormulario}>
+            Volver a iniciar sesión
           </Boton>
         </div>
       </Tarjeta>
@@ -210,6 +272,17 @@ export function FormularioCuenta({ destino, modoInicial, googleHabilitado }: Pro
             Mostrar contraseña
           </label>
         </Campo>
+
+        {modo === "entrar" ? (
+          <p className="-mt-2 text-sm">
+            <Link
+              href="/olvide"
+              className="rounded font-medium text-gray-700 underline underline-offset-2 hover:text-primary-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-700"
+            >
+              ¿Olvidaste tu contraseña?
+            </Link>
+          </p>
+        ) : null}
 
         {errorServidor ? (
           <div role="alert">

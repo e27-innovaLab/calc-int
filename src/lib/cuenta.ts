@@ -51,6 +51,22 @@ const MENSAJES_POR_CODIGO: Record<string, string> = {
 };
 
 /**
+ * ¿El error de iniciar sesión es "falta confirmar el email"? Better Auth lo devuelve con el código
+ * EMAIL_NOT_VERIFIED (estado 403) cuando la verificación es obligatoria y la cuenta todavía no la hizo.
+ */
+export function faltaVerificarEmail(error: { code?: string; status?: number } | null | undefined): boolean {
+  return error?.code === "EMAIL_NOT_VERIFIED";
+}
+
+/**
+ * Cuando la verificación de email es obligatoria, crear la cuenta NO abre sesión: la respuesta llega sin
+ * `token` y hay que avisar "revisá tu correo". Si trae `token`, ya hay sesión y se sigue de largo.
+ */
+export function crearCuentaPideVerificar(datos: { token?: string | null } | null | undefined): boolean {
+  return !datos?.token;
+}
+
+/**
  * Traduce el error que devuelve Better Auth a un mensaje claro en español.
  * Nunca muestra el texto original (viene en inglés) ni dice cuál de los dos datos falló al iniciar sesión.
  */

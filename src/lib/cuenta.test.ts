@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { mensajeDeErrorDeCuenta, nombreDesdeEmail, validarCuenta } from "./cuenta";
+import { crearCuentaPideVerificar, faltaVerificarEmail, mensajeDeErrorDeCuenta, nombreDesdeEmail, validarCuenta } from "./cuenta";
 
 describe("validarCuenta", () => {
   it("acepta datos válidos al iniciar sesión", () => {
@@ -51,5 +51,28 @@ describe("mensajeDeErrorDeCuenta", () => {
   it("usa un mensaje genérico en español para errores desconocidos", () => {
     expect(mensajeDeErrorDeCuenta({ code: "OTRA_COSA" })).toMatch(/No pudimos/);
     expect(mensajeDeErrorDeCuenta(null)).toMatch(/No pudimos/);
+  });
+});
+
+describe("faltaVerificarEmail", () => {
+  it("detecta el error de email sin confirmar", () => {
+    expect(faltaVerificarEmail({ code: "EMAIL_NOT_VERIFIED", status: 403 })).toBe(true);
+  });
+  it("no confunde otros errores ni la ausencia de error", () => {
+    expect(faltaVerificarEmail({ code: "INVALID_EMAIL_OR_PASSWORD", status: 401 })).toBe(false);
+    expect(faltaVerificarEmail({ status: 403 })).toBe(false);
+    expect(faltaVerificarEmail(null)).toBe(false);
+    expect(faltaVerificarEmail(undefined)).toBe(false);
+  });
+});
+
+describe("crearCuentaPideVerificar", () => {
+  it("pide verificar cuando la respuesta no trae token (no hay sesión)", () => {
+    expect(crearCuentaPideVerificar({ token: null })).toBe(true);
+    expect(crearCuentaPideVerificar({})).toBe(true);
+    expect(crearCuentaPideVerificar(null)).toBe(true);
+  });
+  it("sigue de largo cuando ya hay sesión", () => {
+    expect(crearCuentaPideVerificar({ token: "abc123" })).toBe(false);
   });
 });
