@@ -1,7 +1,7 @@
-# Backups automáticos de la base de datos (S3 + R2)
+# Backups automáticos de la base de datos (B2 + R2)
 
 Qué hace: todos los días a las 02:00 (hora de Argentina) GitHub Actions hace un `pg_dump` comprimido de Neon y lo sube a
-**Amazon S3** y a **Cloudflare R2**. En cada uno se conservan:
+**Backblaze B2** y a **Cloudflare R2**. En cada uno se conservan:
 
 | Carpeta | Qué es | Cuántos |
 |---|---|---|
@@ -16,20 +16,20 @@ Archivos del repo: `.github/workflows/backup-bd.yml` (programación) y `scripts/
 
 ## Puesta en marcha (una sola vez)
 
-1. **Buckets privados.** Creá uno en S3 y uno en R2. Dejá bloqueado el acceso público (S3: "Block all public access").
+1. **Buckets privados.** Creá uno en B2 y uno en R2, los dos **privados** (sin acceso público).
    Los backups contienen emails y hashes de contraseñas: nunca deben ser públicos.
 2. **Credenciales con el mínimo permiso**, solo para ese bucket:
-   - S3 (IAM, usuario nuevo): `s3:PutObject`, `s3:GetObject`, `s3:DeleteObject` sobre `arn:aws:s3:::TU-BUCKET/*` y `s3:ListBucket` sobre `arn:aws:s3:::TU-BUCKET`.
+   - Backblaze B2: creá un **bucket privado** y una **Application Key** limitada a ese bucket (Read & Write). Anotá el **keyID**, la **applicationKey** y la **región** del bucket (aparece en su "Endpoint", ej. `s3.us-west-004.backblazeb2.com` → región `us-west-004`).
    - R2 (API Token): permiso "Object Read & Write" limitado a ese bucket.
 3. **Conexión de la base.** En Neon copiá la cadena **directa** (la que NO tiene `-pooler` en el host). Mejor aún: creá un rol de solo lectura para backups.
 4. **Secrets en GitHub** (Settings → Secrets and variables → Actions → New repository secret):
-   `BACKUP_DATABASE_URL`, `S3_BUCKET`, `S3_REGION`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`,
+   `BACKUP_DATABASE_URL`, `B2_BUCKET`, `B2_REGION`, `B2_KEY_ID`, `B2_APP_KEY`,
    `R2_BUCKET`, `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`.
 5. **Probalo ya**: pestaña Actions → "Backup de la base de datos" → Run workflow. Revisá que aparezcan los archivos en `diario/`, `semanal/` y `mensual/` de ambos buckets.
 
 ## Cómo restaurar
 
-Bajá el `.dump` que quieras (consola de S3/R2 o `aws s3 cp`) y restauralo **primero en una base de prueba** (por ejemplo una rama nueva de Neon):
+Bajá el `.dump` que quieras (consola de B2/R2 o `aws s3 cp`) y restauralo **primero en una base de prueba** (por ejemplo una rama nueva de Neon):
 
 ```bash
 pg_restore --no-owner --clean --if-exists -d "postgresql://...base-de-prueba..." calc-int-2026-10-31.dump
@@ -43,5 +43,5 @@ Con `pg_restore --list archivo.dump` ves qué contiene. Restaurá en producción
 - **Repos públicos:** GitHub desactiva los workflows programados tras 60 días sin actividad en el repo. Si pasa, reactivalo en Actions.
 - **Horario:** GitHub puede demorar el disparo unos minutos u horas en momentos de mucha carga.
 - **Neon ya trae restauración a un punto en el tiempo** (ventana corta según el plan). Estos backups son el seguro de largo plazo, no un reemplazo.
-- **Cifrado:** S3 y R2 cifran en reposo por defecto. Si querés cifrar además antes de subir, se puede agregar (por ejemplo con `age`), pero entonces tenés que guardar la clave aparte: sin ella no se restaura.
+- **Cifrado:** B2 y R2 cifran en reposo por defecto. Si querés cifrar además antes de subir, se puede agregar (por ejemplo con `age`), pero entonces tenés que guardar la clave aparte: sin ella no se restaura.
 - **Costo:** la base pesa poco (los backups son de KB a pocos MB); 23 archivos por destino cuestan centavos. R2 no cobra transferencia de salida.
