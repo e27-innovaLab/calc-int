@@ -5,6 +5,7 @@ import { useId } from "react";
 
 import { Aviso } from "@/components/ui/aviso";
 import { Ayuda } from "@/components/ui/ayuda";
+import { BarraNavegacion } from "@/components/ui/barra-navegacion";
 import { BotonLink } from "@/components/ui/boton";
 import { CampoMonto } from "@/components/ui/campo-monto";
 import { ComoSeCalcula } from "@/components/ui/como-se-calcula";
@@ -93,6 +94,8 @@ function Precio() {
   const margen = Number(margenPct) || 0;
   const nivel = nivelDeMargen(margenPct);
   const precioSugerido = precioPorMargen(calculo, margenPct);
+  // Precio propio escrito pero que no sirve (0 o negativo): se avisa en el campo en lugar de dejar la pantalla sin explicación.
+  const precioManualInvalido = modo === "manual" && precioManual.trim() !== "" && !(Number(precioManual) > 0);
 
   return (
     <div className="flex flex-col gap-8">
@@ -213,7 +216,21 @@ function Precio() {
               placeholder="Ej: 7000"
               value={precioManual}
               onChange={(valor) => actualizarPrecio({ precioManual: valor })}
+              invalido={precioManualInvalido}
+              idError="precio-manual-error"
             />
+            {precioManualInvalido ? (
+              <p id="precio-manual-error" role="alert" className="text-sm font-medium text-danger-700">
+                El precio tiene que ser un número mayor que cero.
+              </p>
+            ) : null}
+            {analisis && Number(analisis.margenResultantePct) < 0 ? (
+              <Aviso tono="advertencia" titulo="Este precio queda por debajo de tu costo">
+                <p>
+                  Tu costo por unidad es de {formatearMonto(resumen.costoUnitario)}. Con este precio perdés plata en cada venta.
+                </p>
+              </Aviso>
+            ) : null}
             <div className="rounded-xl bg-primary-50 p-4" aria-live="polite">
               <p className="text-sm text-gray-700">Margen resultante</p>
               <p className={`mt-1 text-2xl font-extrabold ${analisis && Number(analisis.margenResultantePct) < 0 ? "text-danger-700" : "text-primary-600"}`}>
@@ -235,14 +252,14 @@ function Precio() {
         <Aviso tono="info">Ingresá tu precio de venta para ver tu contribución, tu ganancia y tu punto de equilibrio.</Aviso>
       )}
 
-      <div className="flex items-center justify-between gap-3">
+      <BarraNavegacion>
         <BotonLink href="/calculadora/resumen" variante="secundario">
           ← Atrás
         </BotonLink>
         <BotonLink href="/calculadora/simulador" onClick={() => cambiarPaso("simulador")}>
           Ver simulador →
         </BotonLink>
-      </div>
+      </BarraNavegacion>
     </div>
   );
 }
@@ -272,7 +289,7 @@ function Resultados({
       >
         <div className="flex items-center gap-2">
           <h2 id="contribucion" className="text-base font-medium text-gray-900">
-            Margen de Contribución
+            Lo que aporta cada venta (margen de contribución)
           </h2>
           <Ayuda
             sobre="margen de contribución"
@@ -371,7 +388,7 @@ function Resultados({
         ) : (
           <p className={`mt-4 text-sm font-medium ${analisis.estado === "supera" ? "text-success-100" : "text-warning-500"}`}>
             {sinCostosFijos
-              ? "Al no tener costos fijos, no tenés un punto de equilibrio mínimo. ¡Empezás a generar ganancia desde tu primera venta!"
+              ? "Sin costos fijos, tu punto de equilibrio es 0 unidades: cada venta suma desde la primera. ¿Ya sumaste tu tiempo de trabajo? Es el costo fijo que más se olvida."
               : analisis.estado === "supera"
                 ? "¡Estás vendiendo bien por encima de tu piso! Cada unidad extra ya es ganancia pura."
                 : "Necesitás aumentar el volumen o el precio para cubrir tus costos fijos."}

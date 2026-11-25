@@ -21,13 +21,19 @@ export function Logo() {
 export function Cabecera({ centro, derecha }: PropsCabecera) {
   return (
     <header className="border-b border-gray-200 bg-white">
-      <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-x-6 gap-y-3 px-4 py-3 sm:px-6">
-        <Link href="/" aria-label="Preciar, ir al inicio" className="rounded-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary-700">
+      <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-x-3 gap-y-3 px-4 py-3 sm:px-6 md:flex-wrap md:gap-x-6 lg:flex-nowrap">
+        <Link href="/" aria-label="Preciar, ir al inicio" className="shrink-0 rounded-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary-700">
           <Logo />
         </Link>
-        {/* En pantallas chicas los pasos bajan a su propia fila, debajo del logo y los botones. */}
-        {centro ? <div className="order-last w-full lg:order-none lg:w-auto">{centro}</div> : null}
-        <div className="flex items-center justify-end gap-2 text-sm text-gray-500">{derecha}</div>
+        {/*
+          Celular (Figma mobile): todo en una fila; el progreso compacto ocupa el espacio entre el logo y los botones.
+          Tablet: los pasos bajan a su propia fila. Escritorio: los pasos van al centro y todo entra en una fila
+          (si el nombre del producto es largo, se corta con «…» en lugar de partir la cabecera en dos).
+        */}
+        {centro ? (
+          <div className="min-w-0 flex-1 md:order-last md:w-full md:flex-none lg:order-none lg:w-auto">{centro}</div>
+        ) : null}
+        <div className="flex min-w-0 items-center justify-end gap-2 text-sm text-gray-500">{derecha}</div>
       </div>
     </header>
   );

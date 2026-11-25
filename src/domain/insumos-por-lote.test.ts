@@ -16,7 +16,7 @@ import {
 } from "./types";
 
 /**
- * Insumos cargados por lote en la ruta A (prompt maestro, ruta A):
+ * Insumos cargados por lote en la ruta A (documento de reglas de negocio, ruta A):
  *   CVU = costo del insumo en el lote ÷ unidades por lote
  * Un insumo cargado por unidad se usa tal cual, sin volver a dividirlo. El motor no redondea.
  */
@@ -37,6 +37,8 @@ const trabajo = (parcial: Partial<TrabajoPropio>): TrabajoPropio => ({
   horasMensuales: "",
   valorHora: "",
   sueldoMensual: "",
+  modoSueldo: "fijo",
+  horasAlMes: "",
   ...parcial,
 });
 

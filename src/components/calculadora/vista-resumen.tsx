@@ -4,6 +4,7 @@ import Decimal from "decimal.js";
 import { useMemo, type ReactNode } from "react";
 
 import { Aviso } from "@/components/ui/aviso";
+import { BarraNavegacion } from "@/components/ui/barra-navegacion";
 import { BotonLink } from "@/components/ui/boton";
 import { Tarjeta } from "@/components/ui/tarjeta";
 import { ComoSeCalcula } from "@/components/ui/como-se-calcula";
@@ -134,6 +135,10 @@ function Resumen() {
                 <span>
                   {detalle.trabajoPropio.sueldoDirecto ? (
                     "Sueldo mensual esperado"
+                  ) : detalle.trabajoPropio.porHorasAlMes ? (
+                    <>
+                      {formatearCantidad(detalle.trabajoPropio.horasAlMes)} hs al mes × {formatearMonto(detalle.trabajoPropio.valorHora)}/h
+                    </>
                   ) : (
                     <>
                       {formatearCantidad(detalle.trabajoPropio.horasPorLote)} hs × {formatearMonto(detalle.trabajoPropio.valorHora)}/h ×{" "}
@@ -153,12 +158,12 @@ function Resumen() {
         producción.
       </Aviso>
 
-      <div className="flex items-center justify-between gap-3">
+      <BarraNavegacion>
         <BotonLink href="/calculadora/costos" variante="secundario">
           Atrás
         </BotonLink>
         <BotonLink href="/calculadora/precio">Continuar</BotonLink>
-      </div>
+      </BarraNavegacion>
     </div>
   );
 }
