@@ -17,14 +17,16 @@ interface PropsResumenFinal {
   calculo: Calculo;
   resumen: ResumenCostos;
   analisis: AnalisisPrecio;
+  /** Muestra el botón «Descargar PDF» propio. La pantalla «Elegí cómo guardarlo» lo oculta porque tiene su panel. */
+  conBotonPdf?: boolean;
 }
 
 /**
  * Vista final con los principales resultados y los supuestos usados (brief, sección «Resumen»).
  * Solo MUESTRA lo que ya calculó el motor: no hace ningún cálculo propio.
- * «Guardar resumen» abre la ventana de impresión del navegador, desde donde se guarda como PDF.
+ * «Descargar PDF» abre la ventana de impresión del navegador, desde donde se guarda como PDF.
  */
-export function ResumenFinal({ calculo, resumen, analisis }: PropsResumenFinal) {
+export function ResumenFinal({ calculo, resumen, analisis, conBotonPdf = true }: PropsResumenFinal) {
   const { configuracion, precio } = calculo;
   const nombre = configuracion.nombre.trim() || "Tu producto";
 
@@ -62,9 +64,11 @@ export function ResumenFinal({ calculo, resumen, analisis }: PropsResumenFinal) 
             Los resultados y los supuestos con los que se hizo el cálculo, para que puedas revisarlo y guardarlo.
           </p>
         </div>
-        <Boton variante="secundario" onClick={guardar} className="print:hidden">
-          Guardar resumen (PDF)
-        </Boton>
+        {conBotonPdf ? (
+          <Boton variante="secundario" onClick={guardar} className="print:hidden">
+            Descargar PDF
+          </Boton>
+        ) : null}
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">

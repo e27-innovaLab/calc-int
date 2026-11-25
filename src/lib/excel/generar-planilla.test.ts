@@ -55,6 +55,8 @@ const calculoValido: CalculoParaExcel = {
   ],
   trabajoPropio: {
   incluir: true,
+  modoSueldo: "horas",
+  horasAlMes: "8",
   horasPorLote: "2",
   horasMensuales: "8",
   valorHora: "5000",

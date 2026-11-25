@@ -5,6 +5,7 @@ import { useMemo, useState, type ReactNode } from "react";
 
 import { Ayuda } from "@/components/ui/ayuda";
 import { Aviso } from "@/components/ui/aviso";
+import { BarraNavegacion } from "@/components/ui/barra-navegacion";
 import { Boton, BotonLink } from "@/components/ui/boton";
 import { Campo } from "@/components/ui/campo";
 import { CampoMonto } from "@/components/ui/campo-monto";
@@ -14,7 +15,7 @@ import type { CategoriaCosto } from "@/domain/types";
 import { hayErrores, validarConfiguracion, validarCostos } from "@/domain/validaciones";
 import { useHidratado } from "@/hooks/use-hidratado";
 import { formatearCantidad, formatearMonto } from "@/lib/formato";
-import type { RutaProduccion } from "@/domain/types";
+import type { ModoSueldo, RutaProduccion } from "@/domain/types";
 import { useCalculoStore } from "@/store/calculo-store";
 
 /** Textos del trabajo propio según la ruta del paso 1 (en «unidad» y «reventa» las horas son por unidad / por venta). */
@@ -41,6 +42,12 @@ const TEXTOS_TRABAJO: Record<
     consejoFinal: "por venta",
   },
 };
+
+/** Cómo puede definir su sueldo quien revende (solo ruta «reventa»). */
+const OPCIONES_SUELDO: { valor: ModoSueldo; titulo: string }[] = [
+  { valor: "fijo", titulo: "Sueldo fijo por mes" },
+  { valor: "horas", titulo: "Horas al mes" },
+];
 
 import { ListaConceptos, type FilaConcepto } from "./lista-conceptos";
 
@@ -182,6 +189,7 @@ function Formulario() {
 
   const { trabajoPropio } = calculo;
   const tieneTrabajo = resumen.totalTrabajoPropioMensual !== "0";
+  const porHoras = esReventa && trabajoPropio.modoSueldo === "horas";
   const erroresVisibles = intento && hayErrores(errores);
 
   return (
@@ -269,6 +277,34 @@ function Formulario() {
             </Encabezado>
             <div className="flex flex-col gap-5">
               {esReventa ? (
+                <fieldset className="flex flex-col gap-2">
+                  <legend className="text-sm font-semibold text-gray-900">¿Cómo querés definir tu sueldo?</legend>
+                  <div className="flex flex-wrap gap-3">
+                    {OPCIONES_SUELDO.map(({ valor, titulo }) => {
+                      const elegida = trabajoPropio.modoSueldo === valor;
+                      return (
+                        <label
+                          key={valor}
+                          className={`flex cursor-pointer items-center gap-2 rounded-xl border px-4 py-3 text-sm font-medium focus-within:outline-2 focus-within:outline-primary-600 ${
+                            elegida ? "border-primary-600 bg-primary-50 text-primary-700" : "border-gray-200 bg-white text-gray-900"
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name="modo-sueldo"
+                            value={valor}
+                            checked={elegida}
+                            onChange={() => actualizarTrabajoPropio({ modoSueldo: valor })}
+                            className="accent-primary-600"
+                          />
+                          {titulo}
+                        </label>
+                      );
+                    })}
+                  </div>
+                </fieldset>
+              ) : null}
+              {esReventa && !porHoras ? (
                 <>
                   <Campo
                     idControl="sueldo-mensual"
@@ -296,21 +332,21 @@ function Formulario() {
               ) : (
                 <>
               <Campo
-                idControl="horas-por-lote"
-                etiqueta={textosTrabajo.pregunta}
-                error={mensajeDe("trabajoPropio.horasPorLote")}
-                idError="horas-por-lote-error"
+                idControl={porHoras ? "horas-al-mes" : "horas-por-lote"}
+                etiqueta={porHoras ? "¿Cuántas horas trabajás por mes?" : textosTrabajo.pregunta}
+                error={mensajeDe(porHoras ? "trabajoPropio.horasAlMes" : "trabajoPropio.horasPorLote")}
+                idError={porHoras ? "horas-al-mes-error" : "horas-por-lote-error"}
               >
                 <CampoMonto
-                  id="horas-por-lote"
+                  id={porHoras ? "horas-al-mes" : "horas-por-lote"}
                   prefijo={null}
                   sufijo="hs"
-                  placeholder="Ej: 5"
-                  value={trabajoPropio.horasPorLote}
-                  invalido={Boolean(mensajeDe("trabajoPropio.horasPorLote"))}
-                  idError="horas-por-lote-error"
-                  onBlur={() => tocar("trabajoPropio.horasPorLote")}
-                  onChange={(valor) => actualizarTrabajoPropio({ horasPorLote: valor })}
+                  placeholder={porHoras ? "Ej: 100" : "Ej: 5"}
+                  value={porHoras ? trabajoPropio.horasAlMes : trabajoPropio.horasPorLote}
+                  invalido={Boolean(mensajeDe(porHoras ? "trabajoPropio.horasAlMes" : "trabajoPropio.horasPorLote"))}
+                  idError={porHoras ? "horas-al-mes-error" : "horas-por-lote-error"}
+                  onBlur={() => tocar(porHoras ? "trabajoPropio.horasAlMes" : "trabajoPropio.horasPorLote")}
+                  onChange={(valor) => actualizarTrabajoPropio(porHoras ? { horasAlMes: valor } : { horasPorLote: valor })}
                 />
               </Campo>
 
@@ -353,8 +389,16 @@ function Formulario() {
 
               {tieneTrabajo ? (
                 <p className="rounded-xl bg-primary-50 px-4 py-3 text-sm text-primary-700" aria-live="polite">
-                  {formatearCantidad(trabajoPropio.horasPorLote)} hs × {formatearMonto(trabajoPropio.valorHora)}/h ×{" "}
-                  {formatearCantidad(calculo.configuracion.lotes)} {textosTrabajo.multiplicador} ={" "}
+                  {porHoras ? (
+                    <>
+                      {formatearCantidad(trabajoPropio.horasAlMes)} hs × {formatearMonto(trabajoPropio.valorHora)}/h ={" "}
+                    </>
+                  ) : (
+                    <>
+                      {formatearCantidad(trabajoPropio.horasPorLote)} hs × {formatearMonto(trabajoPropio.valorHora)}/h ×{" "}
+                      {formatearCantidad(calculo.configuracion.lotes)} {textosTrabajo.multiplicador} ={" "}
+                    </>
+                  )}
                   <strong>{formatearMonto(resumen.totalTrabajoPropioMensual)} / mes</strong>
                 </p>
               ) : null}
@@ -439,7 +483,7 @@ function Formulario() {
                 : "La harina, la caja, la etiqueta — todo lo que se usa en cada unidad."}
             </Encabezado>
             <div className="mb-4">
-              <Aviso tono="consejo">
+              <Aviso tono="consejo" titulo={esReventa ? "No te olvides de cargar lo que te cuesta el producto" : undefined}>
                 {esReventa
                   ? "Si comprás una caja de 12 termos a $96.000, el precio de compra por unidad es $8.000. Sumá el packaging de cada uno."
                   : esLotes
@@ -454,6 +498,7 @@ function Formulario() {
               placeholderNombre={esReventa ? "Ej: Precio de compra mayorista" : "Ej: Materia prima"}
               placeholderValor={esReventa ? "8000" : "85"}
               etiquetaAgregar={esReventa ? "Agregar precio de compra o packaging" : "Agregar insumo o material"}
+              sugeridos={esReventa ? ["Precio de compra del producto", "Envoltorio", "Bolsas", "Etiqueta"] : ["Envoltorio", "Bolsas", "Etiqueta"]}
               onCambiar={cambiar("variable")}
               onCambiarBase={esLotes ? (id, base) => actualizarConcepto("variable", id, { base }) : undefined}
               onEliminar={(id) => eliminarConcepto("variable", id)}
@@ -485,12 +530,12 @@ function Formulario() {
         </p>
       ) : null}
 
-      <div className="flex items-center justify-between gap-4">
+      <BarraNavegacion>
         <Boton variante="secundario" onClick={atras}>
           ← Atrás
         </Boton>
         <Boton onClick={continuar}>Ver resumen de costos →</Boton>
-      </div>
+      </BarraNavegacion>
     </div>
   );
 }

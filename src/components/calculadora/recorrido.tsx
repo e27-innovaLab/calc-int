@@ -19,7 +19,7 @@ import { ResumenEnVivo } from "./resumen-en-vivo";
 function NombreDelProducto() {
   const nombre = useCalculoStore((s) => s.calculo.configuracion.nombre).trim();
   return (
-    <span className="max-w-40 truncate rounded-md bg-warning-100 px-2.5 py-1 text-xs font-semibold text-gray-900">
+    <span className="min-w-0 max-w-24 truncate rounded-md bg-warning-100 px-2.5 py-1 text-xs font-semibold text-gray-900 md:max-w-40">
       {nombre || "Sin nombre"}
     </span>
   );
@@ -29,7 +29,7 @@ function NombreDelProducto() {
 function BotonReiniciar({ alReiniciar }: { alReiniciar: () => void }) {
   const router = useRouter();
   const [confirmando, setConfirmando] = useState(false);
-  // El enlace «Guardar mi resumen» solo tiene sentido donde hay un resumen para guardar (el simulador).
+  // El enlace «Descargar mi resumen» solo tiene sentido donde hay un resumen para guardar (el simulador).
   const [puedeGuardar, setPuedeGuardar] = useState(false);
   const reiniciar = useCalculoStore((s) => s.reiniciar);
 
@@ -41,10 +41,11 @@ function BotonReiniciar({ alReiniciar }: { alReiniciar: () => void }) {
           setPuedeGuardar(hayResumenParaDescargar());
           setConfirmando(true);
         }}
-        className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-primary-700 hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-700"
+        className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-primary-700 hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-700"
       >
         <span aria-hidden="true">↻</span>
-        Reiniciar
+        {/* Figma mobile: solo el ícono. El texto sigue ahí para los lectores de pantalla. */}
+        <span className="sr-only md:not-sr-only">Reiniciar</span>
       </button>
       <DialogoConfirmar
         abierto={confirmando}
@@ -54,6 +55,8 @@ function BotonReiniciar({ alReiniciar }: { alReiniciar: () => void }) {
         icono={<span className="text-lg leading-none">↻</span>}
         onCancelar={() => setConfirmando(false)}
         onConfirmar={() => {
+          // Cierra el diálogo primero: si ya se está en el paso 1 la ruta no cambia y, sin esto, quedaba abierto.
+          setConfirmando(false);
           reiniciar();
           alReiniciar();
           router.push("/calculadora/producto");
@@ -68,7 +71,7 @@ function BotonReiniciar({ alReiniciar }: { alReiniciar: () => void }) {
             }}
             className="rounded text-sm font-medium text-gray-900 underline underline-offset-4 hover:text-primary-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-700"
           >
-            Guardar mi resumen antes de reiniciar
+            Descargar mi resumen antes de reiniciar
           </button>
         ) : null}
       </DialogoConfirmar>
@@ -85,11 +88,20 @@ export function Recorrido({ children }: { children: ReactNode }) {
   return (
     <>
       <Hidratador />
+      <a
+        href="#contenido"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-primary-900 focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-white"
+      >
+        Saltar al contenido
+      </a>
       <Cabecera
         centro={<Pasos />}
         derecha={
-          <div className="flex items-center gap-2">
-            <MenuUsuario />
+          <div className="flex min-w-0 items-center gap-2">
+            {/* Figma mobile no muestra el acceso a la cuenta en la cabecera: se ve desde tablet. */}
+            <div className="hidden shrink-0 md:block">
+              <MenuUsuario compacto />
+            </div>
             {hidratado ? (
               <>
                 <NombreDelProducto />
@@ -102,10 +114,11 @@ export function Recorrido({ children }: { children: ReactNode }) {
       <div
         className="mx-auto grid w-full max-w-6xl flex-1 gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:py-12"
       >
-        <main id="contenido" className="min-w-0">
+        <main id="contenido" tabIndex={-1} className="min-w-0 focus:outline-none">
           <Fragment key={version}>{children}</Fragment>
         </main>
-        <div className="lg:sticky lg:top-6 lg:self-start">
+        {/* Figma mobile: el «Resumen en vivo» va arriba del contenido; en escritorio, a la derecha. */}
+        <div className="order-first lg:order-none lg:sticky lg:top-6 lg:self-start">
           {/* En Figma el panel «Resumen en vivo» acompaña todos los pasos, también el simulador (Paso 5). */}
           {hidratado ? <ResumenEnVivo /> : null}
         </div>
