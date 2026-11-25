@@ -1,13 +1,15 @@
 import React from "react";
 import {Document,Page,Text,View,StyleSheet,Svg,Line,Circle,Rect,} from "@react-pdf/renderer";
 import Decimal from "decimal.js";
-
-import type { CalculateRequest } from "@/server/calculos/esquema";
+import type { z } from "zod";
+import { esquemaCalculo } from "@/server/calculos/esquema";
 import type { ResumenCostos } from "@/domain/motor/costos";
 import type {ComposicionCostoUnitario,DetalleCostos,} from "@/domain/motor/resumen";
 import type {AnalisisPrecio,DatosGrafico,NivelMargen,} from "@/domain/motor/precio";
 import type { Situacion } from "@/domain/motor/escenarios";
 import {formatearCantidad,formatearDiferenciaMonto,formatearDiferenciaPuntos,formatearDiferenciaUnidades,formatearMonto,formatearPorcentaje,formatearUnidades,} from "@/lib/formato";
+
+type CalculateRequest = z.infer<typeof esquemaCalculo>;
 
 // ============================================================================
 // TIPOS EXPORTADOS PARA EL ENDPOINT
