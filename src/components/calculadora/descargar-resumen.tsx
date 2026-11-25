@@ -1,8 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { DialogoConfirmar } from "@/components/ui/dialogo-confirmar";
+import { useSession } from "@/lib/auth-client";
+import { descargarPdfDelServidor, type ResultadoPdfServidor } from "@/lib/exportar-pdf";
+import { useCalculoStore } from "@/store/calculo-store";
 
 /** Clase que, mientras se imprime, deja visible solo el resumen final (ver `globals.css` y `resumen-final.tsx`). */
 const CLASE_IMPRIMIENDO = "imprimiendo-resumen";
@@ -12,6 +15,12 @@ const ID_RESUMEN = "resumen-final";
 const MENSAJE_LISTO = "Listo, tu resumen se descargó. Guardalo para comparar cuando cambien tus costos.";
 // El navegador no avisa si el PDF se guardó o se canceló: tras cerrar la impresión el aviso no asegura que se descargó.
 const MENSAJE_IMPRESION = "Cerraste la ventana de impresión. Si elegiste «Guardar como PDF», tu resumen ya quedó guardado.";
+const MENSAJE_GENERANDO = "Generando tu PDF… puede tardar unos segundos.";
+/** Por qué se usa la impresión del navegador en lugar del informe detallado del servidor. */
+const MOTIVO_SIN_SESION = "Para el informe detallado con gráficos tenés que iniciar sesión.";
+const MOTIVO_NO_DISPONIBLE = "No pudimos generar el informe detallado en este momento.";
+const motivoDelFallback = (r: ResultadoPdfServidor | null): string =>
+  r === "sin-sesion" ? MOTIVO_SIN_SESION : r === "no-disponible" ? MOTIVO_NO_DISPONIBLE : "";
 // Solo es true cuando la impresión la pidió este panel (afterprint también salta al cancelar o al imprimir otra cosa).
 let impresionPropia = false;
 
@@ -48,7 +57,7 @@ async function guardarComoImagen(producto: string): Promise<boolean> {
     const url = await toPng(nodo, {
       backgroundColor: "#ffffff",
       pixelRatio: 2,
-      // El botón «Guardar resumen (PDF)» del propio resumen no va en la imagen (tampoco sale al imprimir).
+      // El botón «Descargar PDF» del propio resumen no va en la imagen (tampoco sale al imprimir).
       filter: (n) => !(n instanceof HTMLElement && n.classList.contains("print:hidden")),
     });
     const enlace = document.createElement("a");
@@ -93,13 +102,20 @@ const CLASES_BOTON =
 export function DescargarResumen({ producto }: { producto: string }) {
   const [confirmando, setConfirmando] = useState(false);
   const [mensaje, setMensaje] = useState<{ texto: string; error: boolean } | null>(null);
+  const [generando, setGenerando] = useState(false);
+  // Motivo por el que se abrió la impresión; se repite al cerrarla para que el aviso no pierda esa explicación.
+  const motivoRef = useRef("");
+  const { data: sesion } = useSession();
+  const logueado = Boolean(sesion?.user);
 
   // Al cerrar la ventana de impresión se avisa, sin asegurar que se guardó (el navegador no lo informa).
   useEffect(() => {
     function alTerminar() {
       if (!impresionPropia) return;
       impresionPropia = false;
-      setMensaje({ texto: MENSAJE_IMPRESION, error: false });
+      const motivo = motivoRef.current;
+      motivoRef.current = "";
+      setMensaje({ texto: motivo ? `${motivo} ${MENSAJE_IMPRESION}` : MENSAJE_IMPRESION, error: false });
     }
     window.addEventListener("afterprint", alTerminar);
     return () => window.removeEventListener("afterprint", alTerminar);
@@ -111,8 +127,36 @@ export function DescargarResumen({ producto }: { producto: string }) {
     setMensaje(
       ok
         ? { texto: MENSAJE_LISTO, error: false }
-        : { texto: "No pudimos guardar la imagen. Probá con «Guardar resumen».", error: true },
+        : { texto: "No pudimos guardar la imagen. Probá con «Descargar PDF».", error: true },
     );
+  }
+
+  /**
+   * Con sesión iniciada se pide al servidor el informe detallado (gráficos, escenarios y todos los valores).
+   * Sin sesión, o si el servidor no lo puede generar, se usa la impresión del navegador: nadie se queda sin resumen.
+   */
+  async function alConfirmarPdf() {
+    setConfirmando(false);
+    let resultado: ResultadoPdfServidor | null = null;
+    if (logueado) {
+      setGenerando(true);
+      setMensaje({ texto: MENSAJE_GENERANDO, error: false });
+      try {
+        resultado = await descargarPdfDelServidor(useCalculoStore.getState().calculo);
+      } finally {
+        setGenerando(false);
+      }
+      if (resultado === "descargado") {
+        setMensaje({ texto: MENSAJE_LISTO, error: false });
+        return;
+      }
+    }
+    // Sin sesión, o si el servidor no pudo, se avisa por qué y se usa la impresión del navegador.
+    const motivo = logueado ? motivoDelFallback(resultado) : MOTIVO_SIN_SESION;
+    motivoRef.current = motivo;
+    setMensaje({ texto: `${motivo} Se abre la impresión del navegador: elegí «Guardar como PDF».`, error: false });
+    // Se espera un cuadro para que el diálogo termine de cerrarse antes de abrir la impresión.
+    requestAnimationFrame(imprimirResumen);
   }
 
   return (
@@ -126,10 +170,12 @@ export function DescargarResumen({ producto }: { producto: string }) {
               setMensaje(null);
               setConfirmando(true);
             }}
-            className={`${CLASES_BOTON} bg-primary-900 text-white hover:bg-primary-700`}
+            disabled={generando}
+            aria-busy={generando}
+            className={`${CLASES_BOTON} bg-primary-900 text-white hover:bg-primary-700 disabled:cursor-wait disabled:opacity-70`}
           >
             {iconoDescarga}
-            Guardar resumen
+            {generando ? "Generando PDF…" : "Descargar PDF"}
           </button>
           <button
             type="button"
@@ -137,7 +183,7 @@ export function DescargarResumen({ producto }: { producto: string }) {
             className={`${CLASES_BOTON} border border-gray-400 bg-white text-gray-900 hover:bg-gray-50`}
           >
             {iconoImagen}
-            Guardar como imagen
+            Descargar imagen
           </button>
           <button
             type="button"
@@ -154,16 +200,12 @@ export function DescargarResumen({ producto }: { producto: string }) {
       <DialogoConfirmar
         abierto={confirmando}
         titulo="Guardá el resumen de tu cálculo"
-        descripcion="Vas a poder guardarlo como PDF desde la ventana de impresión."
+        descripcion="Se genera el PDF de tu resumen. Si se abre la ventana de impresión, elegí «Guardar como PDF»."
         etiquetaConfirmar="Descargar"
         tonoConfirmar="primario"
         icono={iconoDescarga}
         onCancelar={() => setConfirmando(false)}
-        onConfirmar={() => {
-          setConfirmando(false);
-          // Se espera un cuadro para que el diálogo termine de cerrarse antes de abrir la impresión.
-          requestAnimationFrame(imprimirResumen);
-        }}
+        onConfirmar={alConfirmarPdf}
       />
 
       {/* Fuera del panel en el diseño: un aviso verde debajo. role="status" lo anuncia sin robar el foco. */}

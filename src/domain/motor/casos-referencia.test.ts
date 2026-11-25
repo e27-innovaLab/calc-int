@@ -15,7 +15,7 @@ import { calcularResumenCostos } from "./costos";
 import { analizarPrecio, precioPorMargen } from "./precio";
 
 /**
- * Casos de referencia del prompt maestro de la reingeniería del MVP (A, B y C). Son datos de prueba del motor,
+ * Casos de referencia del documento de reglas de negocio de la reingeniería del MVP (A, B y C). Son datos de prueba del motor,
  * no datos comerciales reales. Política de redondeo: el motor no redondea; acá se compara el valor exacto
  * con una tolerancia de 0,000001 (los importes se muestran con 2 decimales solo en pantalla).
  */
@@ -31,6 +31,8 @@ const trabajo = (parcial: Partial<TrabajoPropio>): TrabajoPropio => ({
   horasMensuales: "",
   valorHora: "",
   sueldoMensual: "",
+  modoSueldo: "fijo",
+  horasAlMes: "",
   ...parcial,
 });
 
@@ -40,7 +42,7 @@ function cercano(obtenido: string | null | undefined, esperado: string) {
   expect(diferencia.lessThan("0.000001")).toBe(true);
 }
 
-/** Corre una entrada por el motor común y devuelve todo lo que el prompt pide comparar. */
+/** Corre una entrada por el motor común y devuelve todo lo que el documento pide comparar. */
 function correr(entrada: Entrada, margenPct: string) {
   const resumen = calcularResumenCostos(entrada);
   const precio = precioPorMargen(entrada, margenPct);
