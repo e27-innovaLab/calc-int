@@ -70,6 +70,25 @@ function crearAuth() {
       googleClientId && googleClientSecret
         ? { google: { clientId: googleClientId, clientSecret: googleClientSecret } }
         : {},
+    /**
+     * Límite de pedidos (anti-abuso). Better Auth lo aplica a sus rutas /api/auth/*.
+     * Por defecto está ACTIVO en producción y apagado en desarrollo (para poder probar sin trabas).
+     * Las rutas sensibles (login, registro, reseteo, verificación) tienen un tope más estricto.
+     * Nota: el almacenamiento por defecto es en memoria; en Vercel (serverless) el conteo es por
+     * instancia, no compartido. Para un tope global y más fuerte, usar `storage: "database"` (requiere
+     * una tabla `rateLimit`) o una regla en el Firewall de Vercel.
+     */
+    rateLimit: {
+      window: 60,
+      max: 100,
+      customRules: {
+        "/sign-in/email": { window: 60, max: 5 },
+        "/sign-up/email": { window: 60, max: 5 },
+        "/request-password-reset": { window: 60, max: 3 },
+        "/forget-password": { window: 60, max: 3 },
+        "/send-verification-email": { window: 60, max: 3 },
+      },
+    },
     // Tiene que ser el ÚLTIMO plugin de la lista: escribe las cookies de sesión desde Server Actions.
     plugins: [nextCookies()],
   });

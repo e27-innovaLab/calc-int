@@ -125,9 +125,6 @@ export const esquemaCalculo = z.object({
   pasoActual: z.enum(["configuracion", "costos", "resumen", "precio", "simulador"]),
 });
 
-/** Tipo exportado para el request del calculador */
-export type CalculateRequest = z.infer<typeof esquemaCalculo>;
-
 /** Cuerpo del PATCH que activa o desactiva el link compartido. */
 export const esquemaCompartir = z.object({ compartido: z.boolean() });
 
