@@ -1,13 +1,16 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 
 import { DESCRIPCION_SITIO, NOMBRE_SITIO, URL_SITIO } from "@/lib/sitio";
 
 // Inter es la tipografía de Preciar (definida por UX/UI en el issue #26 y en el Figma).
-const inter = Inter({
+// Se sirve desde el paquete local para que el build no dependa de Google Fonts.
+const inter = localFont({
+  src: "../../node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2",
   variable: "--font-inter",
-  subsets: ["latin"],
+  weight: "100 900",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
