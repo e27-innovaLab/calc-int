@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { useRef, useState, type KeyboardEvent } from "react";
 
 import { BotonGuardar } from "@/components/calculadora/boton-guardar";
 import { ComparacionEscenarios, type EscenarioConResultado } from "@/components/calculadora/comparacion-escenarios";
@@ -13,7 +13,6 @@ import { Tarjeta } from "@/components/ui/tarjeta";
 import type { CambiosEscenario } from "@/domain/calculo";
 import { compararConBase, type IndicadorId } from "@/domain/motor/comparacion";
 import {
-  metaDeVentas,
   simularVariaciones,
   situacionBase,
   VARIACION_MAXIMA_PCT,
@@ -24,7 +23,7 @@ import {
 import { MAX_ESCENARIOS, type EscenarioUsuario } from "@/domain/types";
 import { useAnalisisPrecio } from "@/hooks/use-analisis-precio";
 import { useHidratado } from "@/hooks/use-hidratado";
-import { formatearCantidad, formatearMonto, formatearPorcentaje, formatearUnidades } from "@/lib/formato";
+import { formatearCantidad, formatearMonto, formatearPorcentaje } from "@/lib/formato";
 import { useCalculoStore } from "@/store/calculo-store";
 
 function Esqueleto() {
@@ -74,7 +73,6 @@ function Simulador() {
     );
   }
 
-  const meta = metaDeVentas(analisis?.puntoEquilibrioUnidades ?? null);
   const escenarios = calculo.escenarios;
   const resultados = new Map(
     escenarios.map((e) => [
@@ -109,9 +107,7 @@ function Simulador() {
       <div>
         <p className="mb-1 text-xs font-bold uppercase tracking-widest text-primary-600">Paso 5 de 5</p>
         <h1 className="text-3xl font-bold tracking-tight text-gray-900">¿Qué pasa si…?</h1>
-        <p className="mt-2 text-lg text-gray-700">
-          Combiná cambios de costos, precio y producción para comparar distintos escenarios.
-        </p>
+        <p className="mt-2 text-lg text-gray-700">Elegí un escenario y movelo para ver cómo cambian tus números.</p>
       </div>
 
       <section aria-labelledby="base" className="rounded-2xl bg-primary-900 p-6 text-white shadow-sm">
@@ -121,9 +117,11 @@ function Simulador() {
           </h2>
           {producto ? <p className="text-sm font-semibold">{producto}</p> : null}
         </div>
-        <dl className="mt-3 grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-4">
+        {/* Figma: cinco datos, con el margen neto entre el precio y el punto de equilibrio. */}
+        <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-4 sm:grid-cols-5">
           <DatoBase etiqueta="Costo unitario" valor={formatearMonto(base.costoUnitario)} />
           <DatoBase etiqueta="Precio de venta" valor={formatearMonto(base.precio)} />
+          <DatoBase etiqueta="Margen neto" valor={formatearPorcentaje(base.margenNetoPct)} />
           <DatoBase
             etiqueta="Punto de equilibrio"
             valor={base.puntoEquilibrio ? `${formatearCantidad(base.puntoEquilibrio)} uds` : "—"}
@@ -138,17 +136,8 @@ function Simulador() {
           <BotonAgregar llegoAlMaximo={llegoAlMaximo} onAgregar={() => conNuevoActivo(agregarEscenario)} />
         </>
       ) : (
-        <section aria-labelledby="escenarios" className="flex flex-col gap-4">
-          <h2 id="escenarios" className="text-xs font-bold uppercase tracking-widest text-gray-900">
-            Tus escenarios
-          </h2>
-          <PestanasEscenarios
-            escenarios={escenarios}
-            idActivo={escenarioActivo.id}
-            onElegir={setIdActivo}
-            onAgregar={() => conNuevoActivo(agregarEscenario)}
-            llegoAlMaximo={llegoAlMaximo}
-          />
+        <section aria-label="Simulador de escenarios" className="flex flex-col gap-4">
+          {/* Figma: primero el escenario elegido y, debajo, «Generar otro escenario» con la lista para cambiar de escenario. */}
           <div role="tabpanel" id={`panel-${escenarioActivo.id}`} aria-labelledby={`pestana-${escenarioActivo.id}`}>
             <TarjetaEscenario
               key={escenarioActivo.id}
@@ -161,24 +150,31 @@ function Simulador() {
               onEliminar={() => setIdAEliminar(escenarioActivo.id)}
             />
           </div>
+          <h2 id="escenarios" className="mt-2 text-base font-semibold text-gray-900">
+            Generar otro escenario
+          </h2>
+          <PestanasEscenarios
+            escenarios={escenarios}
+            idActivo={escenarioActivo.id}
+            onElegir={setIdActivo}
+            onAgregar={() => conNuevoActivo(agregarEscenario)}
+            llegoAlMaximo={llegoAlMaximo}
+          />
           {llegoAlMaximo ? (
             <p className="text-sm text-gray-700">Llegaste al máximo de {MAX_ESCENARIOS} escenarios.</p>
           ) : null}
         </section>
       )}
 
-      {paraComparar.length > 1 ? (
-        <details className="group rounded-2xl border border-gray-200 bg-white shadow-sm">
-          <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 rounded-2xl px-6 py-4 text-base font-semibold text-gray-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-700 [&::-webkit-details-marker]:hidden">
-            Comparar todos mis escenarios
-            <span aria-hidden="true" className="text-gray-700 transition-transform group-open:rotate-180">
-              ▾
-            </span>
-          </summary>
-          <div className="border-t border-gray-200 p-4 sm:p-6">
-            <ComparacionEscenarios base={base} escenarios={paraComparar} />
-          </div>
-        </details>
+      {/* Figma: la comparación con la situación actual queda siempre a la vista (antes estaba en un desplegable). */}
+      {/*
+        `relative overflow-x-clip`: la tabla tiene textos solo para lectores de pantalla (sr-only, posición absoluta) que,
+        en celular, quedaban fuera del recuadro con scroll y estiraban la página a lo ancho. Así quedan contenidos.
+      */}
+      {paraComparar.length > 0 ? (
+        <div className="relative overflow-x-clip">
+          <ComparacionEscenarios base={base} escenarios={paraComparar} />
+        </div>
       ) : null}
 
       {/*
@@ -191,25 +187,6 @@ function Simulador() {
           <ResumenFinal calculo={calculo} resumen={resumen} analisis={analisis} />
         </div>
       ) : null}
-
-      <Tarjeta aria-labelledby="siguiente-paso" className="flex flex-col gap-4">
-        <h2 id="siguiente-paso" className="text-base font-semibold text-gray-900">
-          ¿Cuál es el siguiente paso?
-        </h2>
-        <ul className="grid gap-4 md:grid-cols-3">
-          <SiguientePaso icono={ICONOS_PASO.objetivo} titulo="Fijar mi precio con confianza">
-            Ya tenés todos los datos para salir al mercado con un precio fundamentado.
-          </SiguientePaso>
-          <SiguientePaso icono={ICONOS_PASO.barras} titulo="Establecer una meta de ventas mensual">
-            {meta
-              ? `Apuntá a vender al menos ${formatearUnidades(meta)}/mes para tener ganancia real.`
-              : "Apuntá a vender por encima de tu punto de equilibrio para tener ganancia real."}
-          </SiguientePaso>
-          <SiguientePaso icono={ICONOS_PASO.repetir} titulo="Revisar costos cada 3 meses">
-            Los precios cambian. Actualizá este cálculo cuando cambien tus insumos o tu tarifa.
-          </SiguientePaso>
-        </ul>
-      </Tarjeta>
 
       {/* En Figma solo queda «Atrás»: para empezar otro cálculo está «Reiniciar» arriba. */}
       <div>
@@ -297,13 +274,15 @@ function PestanasEscenarios({
               aria-controls={`panel-${e.id}`}
               tabIndex={activa ? 0 : -1}
               onClick={() => onElegir(e.id)}
-              className={`min-h-11 max-w-48 truncate rounded-xl border px-4 py-2 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-700 ${
+              // Figma: la elegida va celeste con ✓; las demás, blancas con borde. Forma de píldora.
+              className={`inline-flex min-h-11 max-w-56 items-center gap-1.5 rounded-full border px-4 py-2 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-700 ${
                 activa
-                  ? "border-primary-900 bg-primary-900 text-white"
+                  ? "border-primary-600 bg-primary-100 font-semibold text-gray-900"
                   : "border-gray-400 bg-white text-gray-900 hover:bg-gray-50"
               }`}
             >
-              {e.nombre.trim() || "Sin nombre"}
+              {activa ? <span aria-hidden="true">✓</span> : null}
+              <span className="truncate">{e.nombre.trim() || "Sin nombre"}</span>
             </button>
           );
         })}
@@ -312,9 +291,9 @@ function PestanasEscenarios({
         type="button"
         onClick={onAgregar}
         disabled={llegoAlMaximo}
-        className="min-h-11 rounded-xl border border-dashed border-gray-400 bg-transparent px-4 py-2 text-sm font-medium text-gray-900 hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-700 disabled:cursor-not-allowed disabled:opacity-50"
+        className="min-h-11 rounded-full border border-dashed border-gray-400 bg-transparent px-4 py-2 text-sm font-medium text-gray-900 hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-700 disabled:cursor-not-allowed disabled:opacity-50"
       >
-        + Agregar escenario
+        + Nuevo escenario
       </button>
     </div>
   );
@@ -323,7 +302,8 @@ function PestanasEscenarios({
 function DatoBase({ etiqueta, valor }: { etiqueta: string; valor: string }) {
   return (
     <div>
-      <dt className="text-sm text-gray-200">{etiqueta}</dt>
+      {/* 12 px desde tablet, como en el Figma, para que las cinco etiquetas entren en una línea. */}
+      <dt className="text-sm text-gray-200 sm:text-xs">{etiqueta}</dt>
       <dd className="mt-0.5 text-2xl font-extrabold">{valor}</dd>
     </div>
   );
@@ -340,38 +320,6 @@ const trazo = {
   strokeLinejoin: "round" as const,
   "aria-hidden": true,
 };
-
-/** Íconos de línea del Figma para «¿Cuál es el siguiente paso?». */
-const ICONOS_PASO = {
-  objetivo: (
-    <svg {...trazo}>
-      <circle cx="12" cy="12" r="9" />
-      <circle cx="12" cy="12" r="5" />
-      <path d="m12 12 7-7M16 5h3v3" />
-    </svg>
-  ),
-  barras: (
-    <svg {...trazo}>
-      <path d="M4 20h16M7 16v-4M11 16V8M15 16v-6M19 16V6" />
-    </svg>
-  ),
-  repetir: (
-    <svg {...trazo}>
-      <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
-      <path d="M3 3v5h5" />
-    </svg>
-  ),
-};
-
-function SiguientePaso({ icono, titulo, children }: { icono: ReactNode; titulo: string; children: ReactNode }) {
-  return (
-    <li className="rounded-xl bg-primary-100 p-4">
-      <span className="text-gray-900">{icono}</span>
-      <h3 className="mt-2 text-base font-semibold text-gray-900">{titulo}</h3>
-      <p className="mt-2 text-sm text-gray-700">{children}</p>
-    </li>
-  );
-}
 
 function TarjetaEscenario({
   escenario,
@@ -393,9 +341,10 @@ function TarjetaEscenario({
   const idNombre = `nombre-${escenario.id}`;
 
   return (
-    <Tarjeta aria-labelledby={idNombre} className="flex flex-col gap-4">
-      <div className="flex items-center gap-3">
-        <span className="text-gray-900">
+    <Tarjeta aria-labelledby={idNombre} className="flex flex-col gap-6">
+      {/* Figma: ícono + nombre del escenario + «Duplicar» y «Eliminar» en la misma fila, arriba. */}
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary-50 text-gray-900">
           <svg {...trazo}>
             <path d="m3 17 6-6 4 4 8-8" />
             <path d="M15 7h6v6" />
@@ -410,41 +359,45 @@ function TarjetaEscenario({
           value={escenario.nombre}
           maxLength={40}
           onChange={(e) => onCambiar({ nombre: e.target.value })}
-          className="min-h-11 w-full rounded-lg border border-gray-500 px-3 py-2 text-base text-gray-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600"
+          // min-w-40: en pantallas angostas el nombre no se achica; los botones bajan a la línea de abajo.
+          className="min-h-11 min-w-40 flex-1 rounded-lg border border-gray-400 px-3 py-2 text-xl font-semibold text-gray-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600"
         />
+        <div className="flex gap-2">
+          <Boton variante="secundario" onClick={onDuplicar} disabled={!puedeDuplicar} className="text-gray-900">
+            Duplicar<span className="sr-only"> {escenario.nombre}</span>
+          </Boton>
+          <Boton variante="secundario" onClick={onEliminar} className="border-gray-200 bg-gray-100 text-gray-700">
+            Eliminar<span className="sr-only"> {escenario.nombre}</span>
+          </Boton>
+        </div>
       </div>
 
-      <div className="flex flex-col gap-3">
-        <ControlVariacion
-          id={`insumos-${escenario.id}`}
-          etiqueta="¿Cuánto cambian tus costos por unidad? (insumos, envases)"
-          valor={escenario.insumosPct}
-          onCambiar={(v) => onCambiar({ insumosPct: v })}
-        />
-        <ControlVariacion
-          id={`precio-${escenario.id}`}
-          etiqueta="¿Cuánto cambia tu precio de venta?"
-          valor={escenario.precioPct}
-          onCambiar={(v) => onCambiar({ precioPct: v })}
-        />
-        <ControlVariacion
-          id={`produccion-${escenario.id}`}
-          etiqueta="¿Cuánto cambia la cantidad que producís?"
-          valor={escenario.produccionPct}
-          onCambiar={(v) => onCambiar({ produccionPct: v })}
-        />
+      {/* Figma: barras a la izquierda; costo unitario y precio de venta a la derecha. En celular queda una columna. */}
+      <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_17.5rem]">
+        <div className="flex flex-col gap-4">
+          <ControlVariacion
+            id={`insumos-${escenario.id}`}
+            etiqueta="Variación en costos variables"
+            valor={escenario.insumosPct}
+            onCambiar={(v) => onCambiar({ insumosPct: v })}
+          />
+          <ControlVariacion
+            id={`precio-${escenario.id}`}
+            etiqueta="Variación en precio de venta"
+            valor={escenario.precioPct}
+            onCambiar={(v) => onCambiar({ precioPct: v })}
+          />
+          <ControlVariacion
+            id={`produccion-${escenario.id}`}
+            etiqueta="Variación en volumen de producción"
+            valor={escenario.produccionPct}
+            onCambiar={(v) => onCambiar({ produccionPct: v })}
+          />
+        </div>
+        {resultado ? <MetricasLaterales base={base} resultado={resultado} /> : null}
       </div>
 
-      {resultado ? <Resultado base={base} resultado={resultado} /> : null}
-
-      <div className="grid grid-cols-2 gap-2">
-        <Boton variante="secundario" onClick={onDuplicar} disabled={!puedeDuplicar} className="text-gray-900">
-          Duplicar<span className="sr-only"> {escenario.nombre}</span>
-        </Boton>
-        <Boton variante="secundario" onClick={onEliminar} className="text-gray-900">
-          Eliminar<span className="sr-only"> {escenario.nombre}</span>
-        </Boton>
-      </div>
+      {resultado ? <MetricasInferiores base={base} resultado={resultado} /> : null}
     </Tarjeta>
   );
 }
@@ -511,46 +464,98 @@ function ControlVariacion({
   );
 }
 
-/** Las cinco métricas de cada escenario, en el orden del Figma. */
-const METRICAS: { id: IndicadorId; etiqueta: string; unidad: "monto" | "unidades" | "puntos"; valor: (r: ResultadoEscenario) => string }[] = [
-  { id: "costoUnitario", etiqueta: "Costo unitario", unidad: "monto", valor: (r) => formatearMonto(r.costoUnitario) },
-  { id: "precio", etiqueta: "Precio de venta", unidad: "monto", valor: (r) => formatearMonto(r.precio) },
-  { id: "margenNeto", etiqueta: "Margen neto", unidad: "puntos", valor: (r) => formatearPorcentaje(r.margenNetoPct) },
-  {
+type Metrica = {
+  id: IndicadorId;
+  etiqueta: string;
+  /** Frase corta del Figma que explica qué es el dato. */
+  descripcion: string;
+  unidad: "monto" | "unidades" | "puntos";
+  valor: (r: ResultadoEscenario) => string;
+};
+
+/** Las cinco métricas de cada escenario, con los textos del Figma. */
+const METRICAS: Record<IndicadorId, Metrica> = {
+  costoUnitario: {
+    id: "costoUnitario",
+    etiqueta: "Costo unitario",
+    descripcion: "Lo que te cuesta hacer una unidad.",
+    unidad: "monto",
+    valor: (r) => formatearMonto(r.costoUnitario),
+  },
+  precio: {
+    id: "precio",
+    etiqueta: "Precio de venta",
+    descripcion: "A lo que vendés cada unidad.",
+    unidad: "monto",
+    valor: (r) => formatearMonto(r.precio),
+  },
+  margenNeto: {
+    id: "margenNeto",
+    etiqueta: "Margen neto",
+    descripcion: "Parte del precio que te queda como ganancia.",
+    unidad: "puntos",
+    valor: (r) => formatearPorcentaje(r.margenNetoPct),
+  },
+  gananciaMensual: {
+    id: "gananciaMensual",
+    etiqueta: "Ganancia mensual",
+    descripcion: "Lo que te queda al mes después de todos los costos.",
+    unidad: "monto",
+    valor: (r) => formatearMonto(r.gananciaMensual),
+  },
+  puntoEquilibrio: {
     id: "puntoEquilibrio",
     etiqueta: "Punto de equilibrio",
+    descripcion: "Unidades que tenés que vender para no perder plata.",
     unidad: "unidades",
     valor: (r) => (r.puntoEquilibrio ? `${formatearCantidad(r.puntoEquilibrio)} uds` : "—"),
   },
-  { id: "gananciaMensual", etiqueta: "Ganancia mensual", unidad: "monto", valor: (r) => formatearMonto(r.gananciaMensual) },
-];
+};
 
-/** Indicadores que se ven siempre; el resto queda bajo «Ver todos los indicadores». */
-const METRICAS_PRINCIPALES: IndicadorId[] = ["gananciaMensual", "puntoEquilibrio", "costoUnitario"];
-
-function Resultado({ base, resultado }: { base: Situacion; resultado: ResultadoEscenario }) {
-  // La misma comparación que usa la tabla (motor): la tarjeta y la tabla nunca dicen cosas distintas.
-  const comparacion = compararConBase(base, resultado);
-  const principales = METRICAS_PRINCIPALES.flatMap((id) => METRICAS.filter((m) => m.id === id));
-  const otras = METRICAS.filter((m) => !METRICAS_PRINCIPALES.includes(m.id));
-  const tarjeta = (m: (typeof METRICAS)[number]) => (
-    <div key={m.id} className="rounded-xl bg-gray-100 p-3">
-      <dt className="text-xs text-gray-700">{m.etiqueta}</dt>
-      <dd className="mt-1 text-base font-bold text-gray-900">{m.valor(resultado)}</dd>
+/** Una tarjeta de métrica: nombre, valor, cambio contra la base y la frase que la explica. */
+function TarjetaMetrica({
+  metrica,
+  resultado,
+  comparacion,
+  destacada = false,
+}: {
+  metrica: Metrica;
+  resultado: ResultadoEscenario;
+  comparacion: ReturnType<typeof compararConBase>;
+  destacada?: boolean;
+}) {
+  return (
+    <div className={`flex flex-col gap-1 rounded-xl p-4 ${destacada ? "bg-primary-50" : "bg-gray-100"}`}>
+      <dt className="text-xs font-semibold text-gray-900">{metrica.etiqueta}</dt>
+      <dd className="text-2xl font-bold text-gray-900">{metrica.valor(resultado)}</dd>
       <dd>
-        <IndicadorCambio cambio={comparacion[m.id]} unidad={m.unidad} nombre={m.etiqueta} />
+        <IndicadorCambio cambio={comparacion[metrica.id]} unidad={metrica.unidad} nombre={metrica.etiqueta} />
       </dd>
+      <dd className="mt-1 text-xs text-gray-700">{metrica.descripcion}</dd>
     </div>
   );
+}
+
+/** Columna derecha del editor: costo unitario y precio de venta. */
+function MetricasLaterales({ base, resultado }: { base: Situacion; resultado: ResultadoEscenario }) {
+  // La misma comparación que usa la tabla (motor): la tarjeta y la tabla nunca dicen cosas distintas.
+  const comparacion = compararConBase(base, resultado);
   return (
-    <div aria-live="polite" className="flex flex-col gap-2">
-      <dl className="grid grid-cols-1 gap-2 sm:grid-cols-3">{principales.map(tarjeta)}</dl>
-      <details>
-        <summary className="min-h-11 cursor-pointer py-2 text-sm font-semibold text-primary-700 underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-primary-700">
-          Ver todos los indicadores
-        </summary>
-        <dl className="mt-2 grid grid-cols-2 gap-2">{otras.map(tarjeta)}</dl>
-      </details>
-    </div>
+    <dl aria-live="polite" className="flex flex-col gap-3">
+      <TarjetaMetrica metrica={METRICAS.costoUnitario} resultado={resultado} comparacion={comparacion} />
+      <TarjetaMetrica metrica={METRICAS.precio} resultado={resultado} comparacion={comparacion} />
+    </dl>
+  );
+}
+
+/** Fila de abajo del editor: margen neto, ganancia mensual (destacada) y punto de equilibrio. */
+function MetricasInferiores({ base, resultado }: { base: Situacion; resultado: ResultadoEscenario }) {
+  const comparacion = compararConBase(base, resultado);
+  return (
+    <dl aria-live="polite" className="grid gap-3 sm:grid-cols-3">
+      <TarjetaMetrica metrica={METRICAS.margenNeto} resultado={resultado} comparacion={comparacion} />
+      <TarjetaMetrica metrica={METRICAS.gananciaMensual} resultado={resultado} comparacion={comparacion} destacada />
+      <TarjetaMetrica metrica={METRICAS.puntoEquilibrio} resultado={resultado} comparacion={comparacion} />
+    </dl>
   );
 }

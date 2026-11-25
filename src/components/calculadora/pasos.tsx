@@ -26,11 +26,13 @@ export function Pasos() {
   return (
     <nav aria-label="Pasos del cálculo">
       {hayPaso ? (
+        // Figma mobile: «PASO 1 DE 5» en mayúsculas chicas y una barra fina debajo, en la misma fila que el logo.
         <div className="md:hidden">
-          <p className="text-sm font-semibold text-primary-900">
-            Paso {actual + 1} de {PASOS.length}: {PASOS[actual].etiqueta}
+          <p className="text-xs font-bold uppercase tracking-widest text-primary-900">
+            Paso {actual + 1} de {PASOS.length}
+            <span className="sr-only">: {PASOS[actual].etiqueta}</span>
           </p>
-          <div aria-hidden="true" className="mt-2 h-2 overflow-hidden rounded-full bg-gray-200">
+          <div aria-hidden="true" className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-gray-200">
             <div
               className="h-full rounded-full bg-primary-900"
               style={{ width: `${((actual + 1) / PASOS.length) * 100}%` }}
@@ -57,7 +59,7 @@ export function Pasos() {
                 {completado ? "✓" : i + 1}
               </span>
               <span
-                className={`text-sm font-semibold ${esActual ? "" : "hidden md:inline"} ${
+                className={`text-sm font-semibold ${esActual ? "" : "hidden md:inline lg:sr-only xl:not-sr-only"} ${
                   esActual || completado ? "text-primary-900" : "text-gray-500"
                 }`}
               >

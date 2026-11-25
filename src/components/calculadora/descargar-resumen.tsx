@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
 import { DialogoConfirmar } from "@/components/ui/dialogo-confirmar";
@@ -99,7 +100,17 @@ const CLASES_BOTON =
  * Bloque «Descargar resumen» del panel lateral en el simulador (Figma, Paso 5):
  * guardar como PDF (con un aviso previo), guardar como imagen y Excel (próximamente).
  */
-export function DescargarResumen({ producto }: { producto: string }) {
+export function DescargarResumen({
+  producto,
+  titulo = "Descargar resumen",
+  mostrarVerResumen = false,
+}: {
+  producto: string;
+  /** Título del bloque. `null` lo oculta (la pantalla «Elegí cómo guardarlo» pone el suyo). */
+  titulo?: string | null;
+  /** Figma, Paso 5: botón «Ver resumen del cálculo» que lleva a la pantalla «Elegí cómo guardarlo». */
+  mostrarVerResumen?: boolean;
+}) {
   const [confirmando, setConfirmando] = useState(false);
   const [mensaje, setMensaje] = useState<{ texto: string; error: boolean } | null>(null);
   const [generando, setGenerando] = useState(false);
@@ -161,30 +172,55 @@ export function DescargarResumen({ producto }: { producto: string }) {
 
   return (
     <>
-      <div className="mt-4 border-t border-gray-300 pt-4">
-        <h3 className="text-xs font-bold uppercase tracking-widest text-gray-900">Descargar resumen</h3>
+      <div className={titulo ? "mt-4 border-t border-gray-300 pt-4" : ""}>
+        {titulo ? <h3 className="text-xs font-bold uppercase tracking-widest text-gray-900">{titulo}</h3> : null}
+        {/*
+          Figma (Paso 5): sin sesión, «Descargar imagen» es el botón principal y el PDF queda bloqueado con una invitación
+          a iniciar sesión. Con sesión, el PDF (informe del servidor) es el principal y la imagen queda como secundaria.
+        */}
         <div className="mt-3 flex flex-col gap-2">
-          <button
-            type="button"
-            onClick={() => {
-              setMensaje(null);
-              setConfirmando(true);
-            }}
-            disabled={generando}
-            aria-busy={generando}
-            className={`${CLASES_BOTON} bg-primary-900 text-white hover:bg-primary-700 disabled:cursor-wait disabled:opacity-70`}
-          >
-            {iconoDescarga}
-            {generando ? "Generando PDF…" : "Descargar PDF"}
-          </button>
+          {logueado ? (
+            <button
+              type="button"
+              onClick={() => {
+                setMensaje(null);
+                setConfirmando(true);
+              }}
+              disabled={generando}
+              aria-busy={generando}
+              className={`${CLASES_BOTON} bg-primary-900 text-white hover:bg-primary-700 disabled:cursor-wait disabled:opacity-70`}
+            >
+              {iconoDescarga}
+              {generando ? "Generando PDF…" : "Descargar PDF"}
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={alGuardarImagen}
-            className={`${CLASES_BOTON} border border-gray-400 bg-white text-gray-900 hover:bg-gray-50`}
+            className={`${CLASES_BOTON} ${
+              logueado
+                ? "border border-gray-400 bg-white text-gray-900 hover:bg-gray-50"
+                : "bg-primary-900 text-white hover:bg-primary-700"
+            }`}
           >
             {iconoImagen}
             Descargar imagen
           </button>
+          {logueado ? null : (
+            <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm">
+              <p className="flex items-center gap-2 font-semibold text-gray-700">
+                {iconoDescarga}
+                Descargar PDF
+              </p>
+              <p className="mt-2 text-xs text-gray-700">Registrate para descargar el PDF y guardar tu cálculo.</p>
+              <Link
+                href="/cuenta?volver=/calculadora/simulador"
+                className="mt-2 inline-flex min-h-11 items-center rounded text-sm font-semibold text-gray-900 underline underline-offset-4 hover:text-primary-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-700"
+              >
+                Iniciar sesión
+              </Link>
+            </div>
+          )}
           <button
             type="button"
             disabled
@@ -194,6 +230,15 @@ export function DescargarResumen({ producto }: { producto: string }) {
             Excel
             <span className="rounded-full bg-gray-200 px-2 py-0.5 text-xs">Próximamente</span>
           </button>
+          {mostrarVerResumen ? (
+            <Link
+              href="/guardar"
+              className={`${CLASES_BOTON} border border-gray-400 bg-white text-gray-900 hover:bg-gray-50`}
+            >
+              {iconoHoja}
+              Ver resumen del cálculo
+            </Link>
+          ) : null}
         </div>
       </div>
 
