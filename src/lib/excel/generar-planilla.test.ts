@@ -54,12 +54,12 @@ const calculoValido: CalculoParaExcel = {
     },
   ],
   trabajoPropio: {
-    incluir: true,
-    horasPorLote: "4",
-    horasMensuales: "80",
-    valorHora: "5000",
-    sueldoMensual: "",
-  },
+  incluir: true,
+  horasPorLote: "2",
+  horasMensuales: "8",
+  valorHora: "5000",
+  sueldoMensual: "",
+},
   precio: {
     modo: "margen",
     margenPct: "35",
