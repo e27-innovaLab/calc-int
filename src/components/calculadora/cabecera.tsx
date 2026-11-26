@@ -44,9 +44,11 @@ const AVISO_LEGAL = "Preciar es una ayuda para decidir y no reemplaza el asesora
 const CREDITOS = "©2026 Preciar · Team27 · Un proyecto de InnovaLab";
 
 /** Pie del recorrido de pasos (Figma, «Footer»): marca y lema · aviso legal · créditos. */
-export function Pie() {
+export function Pie({ oculto = false }: { oculto?: boolean }) {
   return (
-    <footer className="mt-auto bg-gray-100">
+    // `oculto` (visibility: hidden) reserva el lugar del pie sin mostrarlo: mientras se lee el borrador el contenido
+    // todavía es un esqueleto corto y el pie «saltaba» hacia abajo al llenarse la pantalla.
+    <footer className={oculto ? "invisible mt-auto bg-gray-100" : "mt-auto bg-gray-100"}>
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-8 sm:px-6 lg:flex-row lg:items-end lg:justify-between lg:gap-8">
         <div>
           <Logo />

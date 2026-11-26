@@ -98,7 +98,8 @@ export function Recorrido({ children }: { children: ReactNode }) {
       <Cabecera
         centro={<Pasos />}
         derecha={
-          <div className="flex min-w-0 items-center gap-2">
+          // min-h-11 = alto del botón «Reiniciar»: la cabecera no crece cuando aparece después de leer el borrador.
+          <div className="flex min-h-11 min-w-0 items-center gap-2">
             {/* Figma mobile no muestra el acceso a la cuenta en la cabecera: se ve desde tablet. */}
             <div className="hidden shrink-0 md:block">
               <MenuUsuario compacto />
@@ -122,12 +123,15 @@ export function Recorrido({ children }: { children: ReactNode }) {
         {/* El resumen y la ayuda del paso se quedan juntos al hacer scroll: un solo bloque fijo, con scroll propio si la pantalla es baja. */}
         <div className="order-first flex flex-col gap-4 lg:order-none lg:sticky lg:top-6 lg:-m-1 lg:max-h-[calc(100dvh-3rem)] lg:self-start lg:overflow-y-auto lg:p-1">
           {/* En Figma el panel «Resumen en vivo» acompaña todos los pasos, también el simulador (Paso 5). */}
-          {hidratado ? <ResumenEnVivo /> : null}
+          {/* Antes de leer el borrador se reserva el alto del panel (invisible) para que el contenido no se corra. */}
+          <div className={hidratado ? undefined : "invisible"}>
+            <ResumenEnVivo />
+          </div>
           {/* Figma «Onboarding»: la ayuda del paso, abajo de la columna del resumen. */}
           {hidratado ? <Onboarding /> : null}
         </div>
       </div>
-      <Pie />
+      <Pie oculto={!hidratado} />
     </>
   );
 }
