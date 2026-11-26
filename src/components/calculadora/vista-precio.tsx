@@ -15,6 +15,7 @@ import { MARGEN_MAXIMO_PCT, nivelDeMargen, precioPorMargen, type NivelMargen } f
 import { useAnalisisPrecio } from "@/hooks/use-analisis-precio";
 import { useHidratado } from "@/hooks/use-hidratado";
 import { formatearCantidad, formatearMonto, formatearPorcentaje, formatearUnidades } from "@/lib/formato";
+import { mensajePrecioBajoCosto } from "@/lib/aviso-precio";
 import type { ModoPrecio } from "@/domain/types";
 import { useCalculoStore } from "@/store/calculo-store";
 
@@ -226,9 +227,7 @@ function Precio() {
             ) : null}
             {analisis && Number(analisis.margenResultantePct) < 0 ? (
               <Aviso tono="advertencia" titulo="Este precio queda por debajo de tu costo">
-                <p>
-                  Tu costo por unidad es de {formatearMonto(resumen.costoUnitario)}. Con este precio perdés plata en cada venta.
-                </p>
+                <p>{mensajePrecioBajoCosto(formatearMonto(resumen.costoUnitario), Number(analisis.contribucion) <= 0)}</p>
               </Aviso>
             ) : null}
             <div className="rounded-xl bg-primary-50 p-4" aria-live="polite">
