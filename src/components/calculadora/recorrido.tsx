@@ -12,6 +12,7 @@ import { useCalculoStore } from "@/store/calculo-store";
 import { Cabecera, Pie } from "./cabecera";
 import { Hidratador } from "./hidratador";
 import { MenuUsuario } from "./menu-usuario";
+import { Onboarding } from "./onboarding";
 import { Pasos } from "./pasos";
 import { ResumenEnVivo } from "./resumen-en-vivo";
 
@@ -119,12 +120,15 @@ export function Recorrido({ children }: { children: ReactNode }) {
           <Fragment key={version}>{children}</Fragment>
         </main>
         {/* Figma mobile: el «Resumen en vivo» va arriba del contenido; en escritorio, a la derecha. */}
-        <div className="order-first lg:order-none lg:sticky lg:top-6 lg:self-start">
+        {/* El resumen y la ayuda del paso se quedan juntos al hacer scroll: un solo bloque fijo, con scroll propio si la pantalla es baja. */}
+        <div className="order-first flex flex-col gap-4 lg:order-none lg:sticky lg:top-6 lg:-m-1 lg:max-h-[calc(100dvh-3rem)] lg:self-start lg:overflow-y-auto lg:p-1">
           {/* En Figma el panel «Resumen en vivo» acompaña todos los pasos, también el simulador (Paso 5). */}
           {/* Antes de leer el borrador se reserva el alto del panel (invisible) para que el contenido no se corra. */}
           <div className={hidratado ? undefined : "invisible"}>
             <ResumenEnVivo />
           </div>
+          {/* Figma «Onboarding»: la ayuda del paso, abajo de la columna del resumen. */}
+          {hidratado ? <Onboarding /> : null}
         </div>
       </div>
       <Pie oculto={!hidratado} />

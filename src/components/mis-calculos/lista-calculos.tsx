@@ -119,7 +119,7 @@ export function ListaCalculos() {
     const ok = await borrarCalculoGuardado(c.id);
     setMensaje(
       ok
-        ? { texto: `Borraste «${c.nombre || "cálculo sin nombre"}».`, error: false }
+        ? { texto: `Borraste «${c.nombre.trim() || "cálculo sin nombre"}».`, error: false }
         : { texto: "No pudimos borrar el cálculo. Probá de nuevo.", error: true },
     );
     await recargar();
@@ -213,7 +213,7 @@ export function ListaCalculos() {
               <li key={c.id}>
                 <Tarjeta className="flex flex-col gap-4">
                   <div>
-                    <h2 className="text-lg font-bold text-gray-900">{c.nombre || "Cálculo sin nombre"}</h2>
+                    <h2 className="text-lg font-bold text-gray-900">{c.nombre.trim() || "Cálculo sin nombre"}</h2>
                     <p className="mt-1 text-sm text-gray-700">
                       {c.tipo === "servicio" ? "Servicio" : "Producto"} · Quedó en: {PASOS[c.pasoActual] ?? c.pasoActual}
                     </p>
@@ -243,7 +243,7 @@ export function ListaCalculos() {
       <DialogoConfirmar
         abierto={porBorrar !== null}
         titulo="¿Borrar este cálculo?"
-        descripcion={`Vas a borrar «${porBorrar?.nombre || "cálculo sin nombre"}». No se puede deshacer y el link dejará de funcionar.`}
+        descripcion={`Vas a borrar «${porBorrar?.nombre.trim() || "cálculo sin nombre"}». No se puede deshacer y el link dejará de funcionar.`}
         etiquetaConfirmar="Sí, borrar"
         onCancelar={() => setPorBorrar(null)}
         onConfirmar={confirmarBorrado}
