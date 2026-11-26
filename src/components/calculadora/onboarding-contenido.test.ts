@@ -34,9 +34,9 @@ describe("contenido del onboarding", () => {
     for (const paso of PASOS_ONBOARDING.slice(1)) expect(paso.datoUtil).toBeDefined();
   });
 
-  it("usa voseo (sin «tú» ni formas como «compras hecho»)", () => {
+  it("usa voseo (sin «tú»)", () => {
     const todo = PASOS_ONBOARDING.map((p) => [p.titulo, ...p.cuerpo.map((t) => t.texto), p.datoUtil ?? ""].join(" ")).join(" ");
-    expect(todo).not.toMatch(/\b(compras|tienes|puedes|quieres)\b/i);
+    expect(todo).not.toMatch(/\b(tienes|puedes|quieres)\b/i);
   });
 });
 

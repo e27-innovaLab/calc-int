@@ -29,7 +29,7 @@ export const PASOS_ONBOARDING: PasoOnboarding[] = [
     ruta: "/calculadora/producto",
     etiqueta: "Tu producto",
     titulo: "¡Empecemos! Son solo 5 pasos y podés volver atrás cuando quieras.",
-    cuerpo: [{ texto: "Contanos qué vendés y cómo lo conseguís: si lo hacés vos o lo comprás hecho." }],
+    cuerpo: [{ texto: "Contanos qué vendés y cómo lo conseguís: si lo hacés vos o lo compras hecho." }],
     invitacion: "¿Una palabra rara? Pasá el cursor por encima:",
     terminos: [
       { termino: "Lote", definicion: "Una tanda: producís varias unidades en un mismo proceso, como una horneada o una tirada de velas." },
