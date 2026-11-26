@@ -82,12 +82,13 @@ export function PieHome({ enlaces }: { enlaces: EnlacePie[] }) {
           </div>
         </div>
         <nav aria-label="Enlaces del pie">
-          <ul className="flex flex-col gap-2 text-sm font-medium text-gray-700 md:items-end">
+          {/* Celular (pedido de Lucrecia): dos columnas para no alargar el pie; cada enlace mide 44 px de alto. */}
+          <ul className="grid grid-cols-2 gap-x-6 text-sm font-medium text-gray-700 md:flex md:flex-col md:items-end md:gap-2">
             {enlaces.map((e) => (
               <li key={e.href}>
                 <a
                   href={e.href}
-                  className="rounded underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-700"
+                  className="inline-flex min-h-11 items-center rounded underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-700 md:min-h-0"
                 >
                   {e.texto}
                 </a>
