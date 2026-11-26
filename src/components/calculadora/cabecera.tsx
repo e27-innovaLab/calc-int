@@ -22,7 +22,7 @@ export function Cabecera({ centro, derecha }: PropsCabecera) {
   return (
     <header className="border-b border-gray-200 bg-white">
       <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-x-3 gap-y-3 px-4 py-3 sm:px-6 md:flex-wrap md:gap-x-6 lg:flex-nowrap">
-        <Link href="/" aria-label="Preciar, ir al inicio" className="shrink-0 rounded-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary-700">
+        <Link href="/" aria-label="Preciar, ir al inicio" className="relative shrink-0 rounded-md before:absolute before:inset-x-0 before:-inset-y-2 before:content-[''] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary-700">
           <Logo />
         </Link>
         {/*

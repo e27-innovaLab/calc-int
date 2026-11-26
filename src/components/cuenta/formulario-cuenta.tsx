@@ -217,7 +217,7 @@ export function FormularioCuenta({ destino, modoInicial, googleHabilitado }: Pro
             aria-pressed={modo === opcion}
             onClick={() => cambiarModo(opcion)}
             className={
-              "rounded-lg px-3 py-2 text-sm font-semibold transition-colors " +
+              "relative rounded-lg px-3 py-2 text-sm font-semibold transition-colors before:absolute before:inset-x-0 before:-inset-y-1 before:content-[''] " +
               "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-700 " +
               (modo === opcion ? "bg-white text-primary-900 shadow-sm" : "text-gray-700 hover:text-primary-900")
             }
@@ -277,7 +277,7 @@ export function FormularioCuenta({ destino, modoInicial, googleHabilitado }: Pro
           <p className="-mt-2 text-sm">
             <Link
               href="/olvide"
-              className="rounded font-medium text-gray-700 underline underline-offset-2 hover:text-primary-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-700"
+              className="relative rounded font-medium text-gray-700 underline underline-offset-2 before:absolute before:inset-x-0 before:-top-3 before:-bottom-[15px] before:content-[''] hover:text-primary-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-700"
             >
               ¿Olvidaste tu contraseña?
             </Link>
@@ -310,7 +310,7 @@ export function FormularioCuenta({ destino, modoInicial, googleHabilitado }: Pro
         Tu cálculo en curso no se pierde: queda en este navegador y lo retomás al volver.{" "}
         <Link
           href={destino}
-          className="rounded font-medium underline underline-offset-2 hover:text-primary-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-700"
+          className="relative rounded font-medium underline underline-offset-2 before:absolute before:inset-x-0 before:-inset-y-3.5 before:content-[''] hover:text-primary-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-700"
         >
           Volver sin iniciar sesión
         </Link>

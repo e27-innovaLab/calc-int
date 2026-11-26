@@ -176,7 +176,7 @@ function CabeceraHome() {
   return (
     <header className="sticky top-0 z-20 border-b border-gray-200 bg-background/95 backdrop-blur">
       <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-6 px-4 py-3 sm:px-6">
-        <Link href="/" aria-label="Preciar, ir al inicio" className="rounded-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary-700">
+        <Link href="/" aria-label="Preciar, ir al inicio" className="relative rounded-md before:absolute before:inset-x-0 before:-inset-y-2 before:content-[''] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary-700">
           <Logo />
         </Link>
         <nav aria-label="Secciones" className="hidden lg:block">
