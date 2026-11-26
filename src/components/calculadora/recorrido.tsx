@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Fragment, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
 
 import { hayResumenParaDescargar, imprimirResumen } from "@/components/calculadora/descargar-resumen";
 import { DialogoConfirmar } from "@/components/ui/dialogo-confirmar";
@@ -80,6 +80,48 @@ function BotonReiniciar({ alReiniciar }: { alReiniciar: () => void }) {
   );
 }
 
+/**
+ * Columna del «Resumen en vivo» y la ayuda del paso. En escritorio se queda fija al hacer scroll, pero solo si entra
+ * completa en la pantalla: si es más alta que la ventana (notebooks de ~650 px de alto, o pasos con mucho contenido)
+ * quedaba con scroll propio y la ayuda cortada. En ese caso baja con la página, como el resto del contenido.
+ */
+function ColumnaLateral({ hidratado }: { hidratado: boolean }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [fija, setFija] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    // 56 px = separación de arriba (top-6) y un margen de abajo.
+    const medir = () =>
+      setFija(window.matchMedia("(min-width: 64rem)").matches && el.offsetHeight + 56 <= window.innerHeight);
+    medir();
+    const observador = new ResizeObserver(medir);
+    observador.observe(el);
+    window.addEventListener("resize", medir);
+    return () => {
+      observador.disconnect();
+      window.removeEventListener("resize", medir);
+    };
+  }, []);
+
+  return (
+    // Figma mobile: el «Resumen en vivo» va arriba del contenido; en escritorio, a la derecha.
+    <div
+      ref={ref}
+      className={`order-first flex flex-col gap-4 lg:order-none lg:-m-1 lg:self-start lg:p-1${fija ? " lg:sticky lg:top-6" : ""}`}
+    >
+      {/* En Figma el panel «Resumen en vivo» acompaña todos los pasos, también el simulador (Paso 5). */}
+      {/* Antes de leer el borrador se reserva el alto del panel (invisible) para que el contenido no se corra. */}
+      <div className={hidratado ? undefined : "invisible"}>
+        <ResumenEnVivo />
+      </div>
+      {/* Figma «Onboarding»: la ayuda del paso, abajo de la columna del resumen. */}
+      {hidratado ? <Onboarding /> : null}
+    </div>
+  );
+}
+
 /** Marco del recorrido: cabecera con pasos, contenido del paso y panel «Resumen en vivo». */
 export function Recorrido({ children }: { children: ReactNode }) {
   const hidratado = useHidratado();
@@ -120,16 +162,7 @@ export function Recorrido({ children }: { children: ReactNode }) {
           <Fragment key={version}>{children}</Fragment>
         </main>
         {/* Figma mobile: el «Resumen en vivo» va arriba del contenido; en escritorio, a la derecha. */}
-        {/* El resumen y la ayuda del paso se quedan juntos al hacer scroll: un solo bloque fijo, con scroll propio si la pantalla es baja. */}
-        <div className="order-first flex flex-col gap-4 lg:order-none lg:sticky lg:top-6 lg:-m-1 lg:max-h-[calc(100dvh-3rem)] lg:self-start lg:overflow-y-auto lg:p-1">
-          {/* En Figma el panel «Resumen en vivo» acompaña todos los pasos, también el simulador (Paso 5). */}
-          {/* Antes de leer el borrador se reserva el alto del panel (invisible) para que el contenido no se corra. */}
-          <div className={hidratado ? undefined : "invisible"}>
-            <ResumenEnVivo />
-          </div>
-          {/* Figma «Onboarding»: la ayuda del paso, abajo de la columna del resumen. */}
-          {hidratado ? <Onboarding /> : null}
-        </div>
+        <ColumnaLateral hidratado={hidratado} />
       </div>
       <Pie oculto={!hidratado} />
     </>
