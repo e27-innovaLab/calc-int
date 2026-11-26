@@ -29,6 +29,7 @@ import {
   type RutaProduccion,
   type TrabajoPropio,
 } from "@/domain/types";
+import { crearAlmacenSeguro } from "@/lib/almacen-seguro";
 
 /**
  * Estado del recorrido. Las reglas viven en `domain/calculo.ts`; el store solo las aplica y persiste
@@ -109,7 +110,7 @@ export const useCalculoStore = create<EstadoCalculo>()(
         return estado as unknown as EstadoCalculo;
       },
       skipHydration: true,
-      storage: createJSONStorage(() => localStorage),
+      storage: createJSONStorage(() => crearAlmacenSeguro(() => localStorage)),
       partialize: (s) => ({ calculo: s.calculo }),
     },
   ),
