@@ -83,8 +83,13 @@ export function ComparacionEscenarios({ base, escenarios }: Props) {
         <p className="mt-1 text-sm text-gray-500">Desplazá la tabla para revisar todos los escenarios.</p>
       </div>
 
+      {/*
+        Figma: un escenario por fila (primero la situación actual) y un indicador por columna.
+        `relative`: los textos sr-only de las celdas (posición absoluta) quedan dentro del recuadro con scroll;
+        sin esto, en celular estiraban la página a lo ancho.
+      */}
       <div
-        className="overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-sm"
+        className="relative overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-sm"
         role="region"
         tabIndex={0}
         aria-label="Tabla de comparación, desplazable"
@@ -95,46 +100,33 @@ export function ComparacionEscenarios({ base, escenarios }: Props) {
             equilibrio y ganancia mensual.
           </caption>
           <thead>
-            <tr>
-              <th scope="col" className="w-34 bg-gray-50 p-4 align-middle text-sm font-semibold text-gray-700 md:sticky md:left-0 md:z-10">
-                Indicador
+            <tr className="bg-gray-50">
+              <th scope="col" className="w-48 bg-gray-50 p-4 align-middle text-xs font-semibold text-gray-700 md:sticky md:left-0 md:z-10">
+                Escenario
               </th>
-              <th
-                scope="col"
-                className="w-38 bg-gray-900 p-4 align-middle text-sm font-semibold text-white md:sticky md:left-34 md:z-10"
-              >
-                Situación actual
-                <span className="mt-0.5 block text-xs font-normal text-gray-200">Base</span>
-              </th>
-              {escenarios.map(({ escenario }) => (
-                <th key={escenario.id} scope="col" className="min-w-52 border-l border-gray-200 p-4 align-top font-normal">
-                  <span className="block rounded-lg border border-gray-200 px-3 py-1.5 text-sm font-semibold text-gray-900">
-                    {escenario.nombre}
-                  </span>
-                  <span className="mt-2 flex flex-wrap gap-1.5">
-                    <Chip>Costos {pctEntero(escenario.insumosPct)}</Chip>
-                    <Chip>Precio {pctEntero(escenario.precioPct)}</Chip>
-                    <Chip>Volumen {pctEntero(escenario.produccionPct)}</Chip>
-                    {destacados.includes(escenario.id) ? <Chip tono="destacado">Mayor ganancia mensual</Chip> : null}
-                  </span>
+              {FILAS.map((fila) => (
+                <th key={fila.id} scope="col" className="min-w-36 border-l border-gray-200 p-4 align-middle text-xs font-semibold text-gray-700">
+                  {fila.etiqueta}
                 </th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {FILAS.map((fila) => (
-              <tr key={fila.id} className="border-t border-gray-200">
-                <th scope="row" className="w-34 bg-gray-50 p-4 text-sm font-semibold text-gray-700 md:sticky md:left-0 md:z-10">
-                  {fila.etiqueta}
-                </th>
-                <td className="w-38 bg-gray-900 p-4 text-sm font-bold text-white md:sticky md:left-34 md:z-10">{fila.valor(base)}</td>
-                {escenarios.map(({ escenario, resultado }, i) => (
-                  <td key={escenario.id} className="min-w-52 border-l border-gray-200 p-4 align-top">
-                    <span className="block text-base font-bold text-gray-900">{fila.valor(resultado)}</span>
-                    <IndicadorCambio cambio={comparaciones[i][fila.id]} unidad={fila.unidad} nombre={fila.etiqueta} />
-                  </td>
-                ))}
-              </tr>
+            <FilaComparacion
+              nombre="Situación actual (base)"
+              variaciones="Costos 0% · Precio 0% · Volumen 0%"
+              situacion={base}
+              comparacion={compararConBase(base, base)}
+            />
+            {escenarios.map(({ escenario, resultado }, i) => (
+              <FilaComparacion
+                key={escenario.id}
+                nombre={escenario.nombre}
+                variaciones={`Costos ${pctEntero(escenario.insumosPct)} · Precio ${pctEntero(escenario.precioPct)} · Volumen ${pctEntero(escenario.produccionPct)}`}
+                situacion={resultado}
+                comparacion={comparaciones[i]}
+                destacado={destacados.includes(escenario.id)}
+              />
             ))}
           </tbody>
         </table>
@@ -169,6 +161,41 @@ export function ComparacionEscenarios({ base, escenarios }: Props) {
         </ul>
       </Tarjeta>
     </section>
+  );
+}
+
+/** Una fila de la tabla: el escenario (nombre y variaciones) y sus cinco indicadores con el cambio contra la base. */
+function FilaComparacion({
+  nombre,
+  variaciones,
+  situacion,
+  comparacion,
+  destacado = false,
+}: {
+  nombre: string;
+  variaciones: string;
+  situacion: Situacion;
+  comparacion: ComparacionConBase;
+  destacado?: boolean;
+}) {
+  return (
+    <tr className="border-t border-gray-200">
+      <th scope="row" className="w-48 bg-white p-4 align-top font-normal md:sticky md:left-0 md:z-10">
+        <span className="block text-sm font-semibold text-gray-900">{nombre}</span>
+        <span className="mt-1 block text-xs text-gray-700">{variaciones}</span>
+        {destacado ? (
+          <span className="mt-2 inline-block">
+            <Chip tono="destacado">Mayor ganancia</Chip>
+          </span>
+        ) : null}
+      </th>
+      {FILAS.map((fila) => (
+        <td key={fila.id} className="min-w-36 border-l border-gray-200 p-4 align-top">
+          <span className="block text-sm font-bold text-gray-900">{fila.valor(situacion)}</span>
+          <IndicadorCambio cambio={comparacion[fila.id]} unidad={fila.unidad} nombre={fila.etiqueta} />
+        </td>
+      ))}
+    </tr>
   );
 }
 
